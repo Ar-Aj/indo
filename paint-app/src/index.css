@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Primary Color Variables */
+:root {
+  --primary-bg: #0F0F23;        /* Deep navy background */
+  --secondary-bg: #1A1A2E;      /* Lighter navy surfaces */
+  --accent-bg: #16213E;         /* Card/modal backgrounds */
+  
+  --primary-text: #EEEEF0;      /* Off-white text */
+  --secondary-text: #B8B8CC;    /* Muted text */
+  --accent-color: #4F46E5;      /* Indigo primary button */
+  --success-color: #10B981;     /* Green success states */
+  --warning-color: #F59E0B;     /* Amber warnings */
+  
+  --border-color: #374151;      /* Subtle borders */
+  --hover-bg: #374151;          /* Hover states */
+}
+
+/* Light mode fallback */
+.light {
+  --primary-bg: #F8FAFC;
+  --secondary-bg: #FFFFFF;
+  --accent-bg: #F1F5F9;
+  --primary-text: #1E293B;
+  --secondary-text: #64748B;
+  --border-color: #E2E8F0;
+  --hover-bg: #F1F5F9;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Touch-friendly mobile optimization */
+@media (hover: none) and (pointer: coarse) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
