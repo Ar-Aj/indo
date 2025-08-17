@@ -1,29 +1,54 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
-import Layout from './components/layout/Layout';
+import { AuthProvider } from './contexts/AuthContext';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
 import Home from './pages/Home';
-import About from './pages/About';
-import Contact from './pages/Contact';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Colors from './pages/Colors';
 import PaintYourWall from './pages/PaintYourWall';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
+import Projects from './pages/Projects';
 
 function App() {
   return (
-    <ThemeProvider>
+    <AuthProvider>
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/paint-your-wall" element={<PaintYourWall />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          {/* Public routes without layout */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Routes with layout */}
+          <Route path="/" element={<Layout><Home /></Layout>} />
+          <Route path="/colors" element={<Layout><Colors /></Layout>} />
+          
+          {/* Protected routes */}
+          <Route 
+            path="/paint-your-wall" 
+            element={
+              <Layout>
+                <ProtectedRoute>
+                  <PaintYourWall />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/projects" 
+            element={
+              <Layout>
+                <ProtectedRoute>
+                  <Projects />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+        </Routes>
       </Router>
-    </ThemeProvider>
+    </AuthProvider>
   );
 }
 
