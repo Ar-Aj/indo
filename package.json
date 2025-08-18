@@ -1,20 +1,45 @@
 {
-  "name": "paint-visualizer",
+  "name": "paintviz",
+  "displayName": "PaintViz",
+  "version": "1.0.0",
+  "description": "AI-powered paint visualization app with 2500+ colors",
+  "author": "PaintViz Team",
+  "homepage": "https://paintviz.com",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:mobile": "vite build && cap sync",
     "lint": "eslint .",
     "preview": "vite preview",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:copy": "cap copy",
+    "cap:run:ios": "cap run ios",
+    "cap:run:android": "cap run android",
+    "cap:build:ios": "npm run build:mobile && cap build ios",
+    "cap:build:android": "npm run build:mobile && cap build android",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
     "server": "node server/index.js",
     "dev:server": "nodemon server/index.js",
     "seed:colors": "node server/seeders/colorSeeder.js"
   },
+  "keywords": [
+    "paint",
+    "visualization",
+    "AI",
+    "colors",
+    "interior design",
+    "mobile app"
+  ],
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
+    "@capacitor/ios": "^7.4.2",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -42,8 +67,9 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "nodemon": "^3.0.2",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.1.12",
     "vite": "^7.1.2"
   }
 }
