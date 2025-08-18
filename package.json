@@ -40,7 +40,6 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@capacitor/ios": "^7.4.2",
-    "@tailwindcss/postcss": "^4.1.12",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -56,7 +55,8 @@
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.62.0",
     "react-router-dom": "^7.8.1",
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.0",
+    "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -70,7 +70,6 @@
     "globals": "^16.3.0",
     "nodemon": "^3.0.2",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.12",
     "vite": "^7.1.2"
   }
 }
