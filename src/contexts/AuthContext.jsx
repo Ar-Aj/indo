@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -86,6 +87,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
           dispatch({ type: 'AUTH_ERROR', payload: 'Session expired' });
+          toast.error('Session expired. Please login again.');
         }
       } else {
         dispatch({ type: 'SET_LOADING', payload: false });

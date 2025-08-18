@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -14,9 +15,10 @@ import Projects from './pages/Projects';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
           {/* Public routes without layout */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -49,6 +51,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </ToastProvider>
   );
 }
 
