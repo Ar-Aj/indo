@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -86,6 +87,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
           dispatch({ type: 'AUTH_ERROR', payload: 'Session expired' });
+          toast.error('Session expired. Please login again.');
         }
       } else {
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -112,10 +114,12 @@ export const AuthProvider = ({ children }) => {
         },
       });
       
+      toast.success(`Welcome back, ${response.user.name}!`);
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Login failed';
       dispatch({ type: 'AUTH_ERROR', payload: errorMessage });
+      toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
   };
@@ -137,10 +141,12 @@ export const AuthProvider = ({ children }) => {
         },
       });
       
+      toast.success(`Welcome to PaintViz, ${response.user.name}!`);
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Registration failed';
       dispatch({ type: 'AUTH_ERROR', payload: errorMessage });
+      toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
   };
@@ -149,6 +155,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     dispatch({ type: 'AUTH_LOGOUT' });
+    toast.success('Logged out successfully!');
   };
 
   const clearError = () => {
