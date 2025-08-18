@@ -58,7 +58,10 @@ const sampleColors = [
 const seedColors = async () => {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      family: 4
+    });
     
     console.log('Connected to MongoDB');
     
@@ -88,7 +91,12 @@ const seedColors = async () => {
 };
 
 // Run seeder if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMain = import.meta.url === `file://${process.argv[1]}` || 
+               import.meta.url.replace('file:///', '') === process.argv[1] ||
+               process.argv[1].includes('colorSeeders.js');
+
+if (isMain) {
+  console.log('Starting color seeding...');
   seedColors();
 }
 
