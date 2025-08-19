@@ -20,6 +20,11 @@ import {
   Globe,
   MessageCircle
 } from 'lucide-react';
+import { 
+  Info,
+  Mail,
+  FolderOpen
+} from 'lucide-react';
 
 const Home = () => {
   const { isAuthenticated, user } = useAuth();
@@ -378,6 +383,98 @@ const Home = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+      {/* Quick Links Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Explore More
+            </h2>
+            <p className="text-gray-600">
+              Discover everything PaintViz has to offer
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-4xl mx-auto">
+            <Link
+              to="/colors"
+              className="group card p-6 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            >
+              <div className="bg-gradient-to-br from-purple-500 to-pink-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Palette className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-purple-600">
+                Browse Colors
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Explore 2500+ professional paint colors
+              </p>
+            </Link>
+            
+            <Link
+              to="/about"
+              className="group card p-6 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            >
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Info className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">
+                About Us
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Learn about our mission and technology
+              </p>
+            </Link>
+            
+            <Link
+              to="/contact"
+              className="group card p-6 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            >
+              <div className="bg-gradient-to-br from-green-500 to-teal-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-green-600">
+                Contact Us
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Get in touch with our support team
+              </p>
+            </Link>
+            
+            {isAuthenticated ? (
+              <Link
+                to="/projects"
+                className="group card p-6 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              >
+                <div className="bg-gradient-to-br from-orange-500 to-red-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FolderOpen className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-orange-600">
+                  My Projects
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  View your saved paint projects
+                </p>
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="group card p-6 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              >
+                <div className="bg-gradient-to-br from-orange-500 to-red-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <ArrowRight className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-orange-600">
+                  Get Started
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Create your free account today
+                </p>
+              </Link>
+            )}
           </div>
         </div>
       </section>

@@ -12,6 +12,8 @@ import Register from './pages/Register';
 import Colors from './pages/Colors';
 import PaintYourWall from './pages/PaintYourWall';
 import Projects from './pages/Projects';
+import About from './pages/About';
+import Contact from './pages/Contact';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
             {/* Routes with layout */}
             <Route path="/" element={<Layout><Home /></Layout>} />
             <Route path="/colors" element={<Layout><Colors /></Layout>} />
+            <Route path="/about" element={<Layout><About /></Layout>} />
+            <Route path="/contact" element={<Layout><Contact /></Layout>} />
             
             {/* Protected routes */}
             <Route 
