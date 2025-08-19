@@ -20,7 +20,9 @@ import {
   Bookmark,
   MoreVertical,
   SortAsc,
-  Zap
+  Zap,
+  AlertCircle,
+  Share2
 } from 'lucide-react';
 
 const Colors = () => {
@@ -60,6 +62,7 @@ const Colors = () => {
   const fetchColors = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
       const params = {
         limit: colorsPerPage * currentPage,
         ...(selectedBrand && { brand: selectedBrand }),
@@ -68,11 +71,22 @@ const Colors = () => {
       };
       
       const response = await paintAPI.getColors(params);
-      setColors(response.colors || []);
-      setHasMore((response.colors || []).length === colorsPerPage * currentPage);
+      
+      // Handle both successful responses and empty responses
+      if (response && response.colors) {
+        setColors(response.colors);
+        setHasMore(response.colors.length === colorsPerPage * currentPage);
+      } else {
+        // If no colors returned, set empty array
+        setColors([]);
+        setHasMore(false);
+      }
     } catch (error) {
       console.error('Error fetching colors:', error);
       setError('Failed to load colors. Please try again.');
+      // Set empty colors array to prevent blank page
+      setColors([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -81,9 +95,15 @@ const Colors = () => {
   const fetchBrands = async () => {
     try {
       const response = await paintAPI.getBrands();
-      setBrands(response.brands || []);
+      if (response && response.brands) {
+        setBrands(response.brands);
+      } else {
+        setBrands([]);
+      }
     } catch (error) {
       console.error('Error fetching brands:', error);
+      // Set empty brands array to prevent issues
+      setBrands([]);
     }
   };
 

@@ -10,9 +10,6 @@
     <meta name="keywords" content="paint, visualization, AI, colors, interior design, home improvement" />
     <meta name="author" content="PaintViz Team" />
     
-    <!-- Content Security Policy for Development -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' http://localhost:5000 ws://localhost:* wss://localhost:*; img-src 'self' data: blob: https:;">
-    
     <!-- Mobile Optimization -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +29,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
     <!-- Security -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob: https:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:5000 https://localhost:5000;" />
     
     <!-- Performance -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com" />

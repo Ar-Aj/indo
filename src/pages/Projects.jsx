@@ -22,7 +22,9 @@ import {
   Heart,
   MoreVertical,
   Edit3,
-  Copy
+  Copy,
+  AlertCircle,
+  Palette
 } from 'lucide-react';
 
 const Projects = () => {
@@ -43,11 +45,21 @@ const Projects = () => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
       const response = await paintAPI.getProjects();
-      setProjects(response.projects || []);
+      
+      // Handle both successful responses and empty responses
+      if (response && response.projects) {
+        setProjects(response.projects);
+      } else {
+        // If no projects returned, set empty array
+        setProjects([]);
+      }
     } catch (error) {
       console.error('Error fetching projects:', error);
       setError('Failed to load projects. Please try again.');
+      // Set empty projects array to prevent blank page
+      setProjects([]);
     } finally {
       setLoading(false);
     }
