@@ -53,6 +53,18 @@ export const authAPI = {
   },
 };
 
+// Mock data for development when backend is unavailable
+const mockColors = [
+  { _id: '1', name: 'Agreeable Gray', hexCode: '#D4CFC0', brand: 'Sherwin-Williams', category: 'neutral', finish: 'eggshell', price: 65, popularity: 95 },
+  { _id: '2', name: 'Naval', hexCode: '#1F2937', brand: 'Sherwin-Williams', category: 'cool', finish: 'satin', price: 65, popularity: 88 },
+  { _id: '3', name: 'Cloud White', hexCode: '#F7F4F2', brand: 'Benjamin Moore', category: 'neutral', finish: 'eggshell', price: 70, popularity: 96 },
+  { _id: '4', name: 'Swiss Coffee', hexCode: '#F7F3E9', brand: 'Behr', category: 'warm', finish: 'flat', price: 45, popularity: 89 },
+  { _id: '5', name: 'Simply White', hexCode: '#F9F9F6', brand: 'Benjamin Moore', category: 'neutral', finish: 'semi-gloss', price: 70, popularity: 94 },
+  { _id: '6', name: 'Polar Bear', hexCode: '#F8F8FF', brand: 'Behr', category: 'cool', finish: 'eggshell', price: 45, popularity: 86 }
+];
+
+const mockBrands = ['Sherwin-Williams', 'Benjamin Moore', 'Behr', 'Farrow & Ball'];
+
 // Paint API
 export const paintAPI = {
   processVisualization: async (formData) => {
@@ -65,8 +77,14 @@ export const paintAPI = {
   },
   
   getProjects: async () => {
-    const response = await api.get('/paint/projects');
-    return response.data;
+    try {
+      const response = await api.get('/paint/projects');
+      return response.data;
+    } catch (error) {
+      // Return mock empty projects if backend is unavailable
+      console.warn('Backend unavailable, using mock data');
+      return { projects: [] };
+    }
   },
   
   getProject: async (id) => {
@@ -75,13 +93,25 @@ export const paintAPI = {
   },
   
   getColors: async (params = {}) => {
-    const response = await api.get('/paint/colors', { params });
-    return response.data;
+    try {
+      const response = await api.get('/paint/colors', { params });
+      return response.data;
+    } catch (error) {
+      // Return mock colors if backend is unavailable
+      console.warn('Backend unavailable, using mock colors data');
+      return { colors: mockColors };
+    }
   },
   
   getBrands: async () => {
-    const response = await api.get('/paint/brands');
-    return response.data;
+    try {
+      const response = await api.get('/paint/brands');
+      return response.data;
+    } catch (error) {
+      // Return mock brands if backend is unavailable
+      console.warn('Backend unavailable, using mock brands data');
+      return { brands: mockBrands };
+    }
   },
 };
 
