@@ -46,6 +46,7 @@ class PaintVisualizationService {
       );
       
       console.log('Roboflow API request successful');
+      console.log('Detection results:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
       const errorInfo = {
@@ -83,6 +84,9 @@ class PaintVisualizationService {
       const image = sharp(imagePath);
       const { width, height } = await image.metadata();
       
+      console.log(`Image dimensions: ${width}x${height}`);
+      console.log(`Total predictions: ${detectionResults.predictions?.length || 0}`);
+      
       // Create a black mask
       let mask = sharp({
         create: {
@@ -98,11 +102,18 @@ class PaintVisualizationService {
         ['wall', 'furniture', 'cabinet', 'door'].includes(pred.class.toLowerCase())
       ) || [];
 
+      console.log(`Found ${paintableSurfaces.length} paintable surfaces`);
+      paintableSurfaces.forEach((surface, index) => {
+        console.log(`Surface ${index + 1}: class=${surface.class}, confidence=${surface.confidence}, x=${surface.x}, y=${surface.y}, width=${surface.width}, height=${surface.height}`);
+      });
+
       if (paintableSurfaces.length > 0) {
         // Create white rectangles for detected surfaces
         const surface = paintableSurfaces[0]; // Use first detected surface
         const x = Math.round(surface.x - surface.width / 2);
         const y = Math.round(surface.y - surface.height / 2);
+        
+        console.log(`Creating mask for surface: x=${x}, y=${y}, width=${Math.round(surface.width)}, height=${Math.round(surface.height)}`);
         
         mask = mask.composite([{
           input: {
@@ -116,11 +127,36 @@ class PaintVisualizationService {
           top: Math.max(0, y),
           left: Math.max(0, x)
         }]);
+        
+        console.log('Mask created successfully with white area');
+      } else {
+        console.warn('No paintable surfaces found, creating a default mask with center rectangle');
+        // Create a default mask with a center rectangle if no surfaces detected
+        const defaultWidth = Math.round(width * 0.6);
+        const defaultHeight = Math.round(height * 0.4);
+        const defaultX = Math.round((width - defaultWidth) / 2);
+        const defaultY = Math.round((height - defaultHeight) / 2);
+        
+        mask = mask.composite([{
+          input: {
+            create: {
+              width: defaultWidth,
+              height: defaultHeight,
+              channels: 3,
+              background: { r: 255, g: 255, b: 255 }
+            }
+          },
+          top: defaultY,
+          left: defaultX
+        }]);
+        
+        console.log(`Default mask created: ${defaultWidth}x${defaultHeight} at ${defaultX},${defaultY}`);
       }
 
       const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
       await mask.png().toFile(maskPath);
       
+      console.log(`Mask saved to: ${maskPath}`);
       return maskPath;
     } catch (error) {
       console.error('Mask creation error:', error);
