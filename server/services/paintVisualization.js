@@ -149,19 +149,27 @@ class PaintVisualizationService {
       
       console.log(`Image size: ${Math.round(imageBase64.length / 1024)}KB, Mask size: ${Math.round(maskBase64.length / 1024)}KB`);
       
+      // Ensure base64 strings have no data URL prefix (they should be pure base64)
+      const cleanImageBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      const cleanMaskBase64 = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      
       const payload = {
-        prompt: `realistic interior wall painted in ${colorName} color ${colorHex}, professional lighting, high quality, photorealistic`,
-        negative_prompt: "blurry, low quality, distorted, unrealistic colors, cartoon, painting, illustration",
-        image: imageBase64,
-        mask: maskBase64,
+        model: "stable-diffusion-xl-v1-0",
+        image: cleanImageBase64,
+        mask: cleanMaskBase64,
+        prompt: `paint the wall in ${colorName} color, room, realistic lighting, professional interior photo`,
+        negative_prompt: "cartoon, painting, illustration, blurry, low quality, distorted",
         width: 1024,
         height: 1024,
         steps: 25,
-        guidance_scale: 7.5,
-        strength: 0.8
+        guidance: 7.5,
+        strength: 0.8,
+        scheduler: "euler_a",
+        output_format: "jpeg",
+        response_format: "url"
       };
 
-      const response = await getimgAPI.post('/essential-v1/inpaint', payload);
+      const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
       console.log('getimg.ai API request successful');
       
       return response.data;
