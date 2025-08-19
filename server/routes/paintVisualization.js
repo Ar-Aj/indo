@@ -92,8 +92,8 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
     const project = new Project({
       userId: req.user._id,
       name: projectName || `Project ${Date.now()}`,
-      originalImageUrl: imagePath,
-      processedImageUrl: paintResult.url || paintResult.image,
+      originalImageUrl: `/uploads/${path.basename(imagePath)}`,
+      processedImageUrl: paintResult.url,
       selectedColors: [colorId],
       detectionResults: detectionResults
     });
@@ -108,7 +108,7 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         id: project._id,
         name: project.name,
         originalImage: `/uploads/${path.basename(imagePath)}`,
-        processedImage: paintResult.url || paintResult.image,
+        processedImage: paintResult.url,
         selectedColor: selectedColor,
         recommendations: recommendations,
         detectedSurfaces: detectionResults.predictions?.length || 0

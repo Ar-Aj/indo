@@ -3,6 +3,7 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import axios from 'axios';
 import { fileURLToPath } from 'url';
 
 // Get current directory for proper path resolution
@@ -133,7 +134,7 @@ class PaintVisualizationService {
         console.warn('No paintable surfaces found, creating a default mask with center rectangle');
         // Create a default mask with a center rectangle if no surfaces detected
         const defaultWidth = Math.round(width * 0.6);
-        const defaultHeight = Math.round(height * 0.4);
+        const defaultHeight = Math.round(width * 0.4);
         const defaultX = Math.round((width - defaultWidth) / 2);
         const defaultY = Math.round((height - defaultHeight) / 2);
 
@@ -168,21 +169,21 @@ class PaintVisualizationService {
   async resizeForAPI(imagePath, maskPath) {
     try {
       console.log('Resizing images for API compatibility...');
-
+      
       // Target dimensions (getimg.ai typically accepts up to 1024x1024)
       const maxWidth = 1024;
       const maxHeight = 1024;
-
+      
       // Get original dimensions
       const originalImage = sharp(imagePath);
       const { width: origWidth, height: origHeight } = await originalImage.metadata();
-
+      
       console.log(`Original dimensions: ${origWidth}x${origHeight}`);
-
+      
       // Calculate new dimensions maintaining aspect ratio
       const aspectRatio = origWidth / origHeight;
       let newWidth, newHeight;
-
+      
       if (aspectRatio > 1) {
         // Landscape
         newWidth = Math.min(maxWidth, origWidth);
@@ -192,29 +193,29 @@ class PaintVisualizationService {
         newHeight = Math.min(maxHeight, origHeight);
         newWidth = Math.round(newHeight * aspectRatio);
       }
-
+      
       // Ensure dimensions are even numbers (some APIs require this)
       newWidth = Math.floor(newWidth / 2) * 2;
       newHeight = Math.floor(newHeight / 2) * 2;
-
+      
       console.log(`Resizing to: ${newWidth}x${newHeight}`);
-
+      
       // Resize original image
       const resizedImagePath = path.join(uploadsDir, `resized-image-${Date.now()}.jpg`);
       await originalImage
         .resize(newWidth, newHeight)
         .jpeg({ quality: 90 })
         .toFile(resizedImagePath);
-
+      
       // Resize mask
       const resizedMaskPath = path.join(uploadsDir, `resized-mask-${Date.now()}.png`);
       await sharp(maskPath)
         .resize(newWidth, newHeight)
         .png()
         .toFile(resizedMaskPath);
-
+      
       console.log(`Resized images saved: ${resizedImagePath}, ${resizedMaskPath}`);
-
+      
       return {
         imagePath: resizedImagePath,
         maskPath: resizedMaskPath,
@@ -224,6 +225,30 @@ class PaintVisualizationService {
     } catch (error) {
       console.error('Image resizing error:', error);
       throw new Error(`Image resizing failed: ${error.message}`);
+    }
+  }
+
+  // Step 3.5: Download and save the generated image locally
+  async downloadGeneratedImage(imageUrl) {
+    try {
+      console.log('Downloading generated image from:', imageUrl);
+      
+      const response = await axios.get(imageUrl, { responseType: 'stream' });
+      const localImagePath = path.join(uploadsDir, `generated-${Date.now()}.jpg`);
+      
+      const writer = fs.createWriteStream(localImagePath);
+      response.data.pipe(writer);
+      
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          console.log('Generated image saved locally:', localImagePath);
+          resolve(localImagePath);
+        });
+        writer.on('error', reject);
+      });
+    } catch (error) {
+      console.error('Error downloading generated image:', error);
+      throw new Error(`Failed to download generated image: ${error.message}`);
     }
   }
 
@@ -264,13 +289,19 @@ class PaintVisualizationService {
         height: resizedImages.height
       };
 
-      const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
-console.log('getimg.ai API request successful');
-console.log('API Response:', JSON.stringify(response.data, null, 2)); // ADD THIS LINE
+      const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
+      console.log('getimg.ai API request successful');
+      console.log('API Response:', JSON.stringify(response.data, null, 2));
 
-return response.data;
-
-      return response.data;
+      // Download the generated image locally
+      if (response.data.url) {
+        const localImagePath = await this.downloadGeneratedImage(response.data.url);
+        return {
+          url: `/uploads/${path.basename(localImagePath)}`,
+          originalUrl: response.data.url,
+          message: 'Paint visualization successful'
+        };
+      }
 
       return response.data;
     } catch (error) {
