@@ -164,6 +164,69 @@ class PaintVisualizationService {
     }
   }
 
+  // Step 2.5: Resize image and mask for API compatibility
+  async resizeForAPI(imagePath, maskPath) {
+    try {
+      console.log('Resizing images for API compatibility...');
+
+      // Target dimensions (getimg.ai typically accepts up to 1024x1024)
+      const maxWidth = 1024;
+      const maxHeight = 1024;
+
+      // Get original dimensions
+      const originalImage = sharp(imagePath);
+      const { width: origWidth, height: origHeight } = await originalImage.metadata();
+
+      console.log(`Original dimensions: ${origWidth}x${origHeight}`);
+
+      // Calculate new dimensions maintaining aspect ratio
+      const aspectRatio = origWidth / origHeight;
+      let newWidth, newHeight;
+
+      if (aspectRatio > 1) {
+        // Landscape
+        newWidth = Math.min(maxWidth, origWidth);
+        newHeight = Math.round(newWidth / aspectRatio);
+      } else {
+        // Portrait or square
+        newHeight = Math.min(maxHeight, origHeight);
+        newWidth = Math.round(newHeight * aspectRatio);
+      }
+
+      // Ensure dimensions are even numbers (some APIs require this)
+      newWidth = Math.floor(newWidth / 2) * 2;
+      newHeight = Math.floor(newHeight / 2) * 2;
+
+      console.log(`Resizing to: ${newWidth}x${newHeight}`);
+
+      // Resize original image
+      const resizedImagePath = path.join(uploadsDir, `resized-image-${Date.now()}.jpg`);
+      await originalImage
+        .resize(newWidth, newHeight)
+        .jpeg({ quality: 90 })
+        .toFile(resizedImagePath);
+
+      // Resize mask
+      const resizedMaskPath = path.join(uploadsDir, `resized-mask-${Date.now()}.png`);
+      await sharp(maskPath)
+        .resize(newWidth, newHeight)
+        .png()
+        .toFile(resizedMaskPath);
+
+      console.log(`Resized images saved: ${resizedImagePath}, ${resizedMaskPath}`);
+
+      return {
+        imagePath: resizedImagePath,
+        maskPath: resizedMaskPath,
+        width: newWidth,
+        height: newHeight
+      };
+    } catch (error) {
+      console.error('Image resizing error:', error);
+      throw new Error(`Image resizing failed: ${error.message}`);
+    }
+  }
+
   // Step 3: Apply paint color using getimg.ai Stable Diffusion XL Inpainting
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName) {
     try {
@@ -179,9 +242,12 @@ class PaintVisualizationService {
 
       console.log('Applying paint color using getimg.ai API...');
 
-      // Convert images to base64 (but don't log them to avoid console spam)
-      const imageBase64 = fs.readFileSync(originalImagePath, 'base64');
-      const maskBase64 = fs.readFileSync(maskImagePath, 'base64');
+      // Resize images first for API compatibility
+      const resizedImages = await this.resizeForAPI(originalImagePath, maskImagePath);
+
+      // Convert resized images to base64
+      const imageBase64 = fs.readFileSync(resizedImages.imagePath, 'base64');
+      const maskBase64 = fs.readFileSync(resizedImages.maskPath, 'base64');
 
       console.log(`Image size: ${Math.round(imageBase64.length / 1024)}KB, Mask size: ${Math.round(maskBase64.length / 1024)}KB`);
 
@@ -190,13 +256,21 @@ class PaintVisualizationService {
       const cleanMaskBase64 = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
       const payload = {
-  image: cleanImageBase64,
-  mask: cleanMaskBase64,
-  prompt: `paint the wall in ${colorName} color, realistic interior design`
-};
+        model: "stable-diffusion-xl-v1-0",
+        image: cleanImageBase64,
+        mask_image: cleanMaskBase64,
+        prompt: `paint the wall in ${colorName} color, realistic interior design`,
+        width: resizedImages.width,
+        height: resizedImages.height
+      };
 
       const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
-      console.log('getimg.ai API request successful');
+console.log('getimg.ai API request successful');
+console.log('API Response:', JSON.stringify(response.data, null, 2)); // ADD THIS LINE
+
+return response.data;
+
+      return response.data;
 
       return response.data;
     } catch (error) {
