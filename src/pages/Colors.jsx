@@ -21,7 +21,8 @@ import {
   MoreVertical,
   SortAsc,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Share2
 } from 'lucide-react';
 
 const Colors = () => {

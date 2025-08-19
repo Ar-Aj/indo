@@ -23,7 +23,8 @@ import {
   MoreVertical,
   Edit3,
   Copy,
-  AlertCircle
+  AlertCircle,
+  Palette
 } from 'lucide-react';
 
 const Projects = () => {
