@@ -101,6 +101,10 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
     await project.save();
     
     console.log('Paint visualization completed successfully');
+    console.log('Paint result:', JSON.stringify(paintResult, null, 2));
+    
+    const processedImageUrl = paintResult.url || paintResult.image;
+    console.log('Final processed image URL:', processedImageUrl);
     
     res.json({
       success: true,
@@ -108,10 +112,16 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         id: project._id,
         name: project.name,
         originalImage: `/uploads/${path.basename(imagePath)}`,
-        processedImage: paintResult.url || paintResult.image,
+        processedImage: processedImageUrl,
         selectedColor: selectedColor,
         recommendations: recommendations,
-        detectedSurfaces: detectionResults.predictions?.length || 0
+        detectedSurfaces: detectionResults.predictions?.length || 0,
+        debug: {
+          paintResultKeys: Object.keys(paintResult),
+          paintResultUrl: paintResult.url,
+          paintResultImage: paintResult.image,
+          paintResultMessage: paintResult.message
+        }
       }
     });
     

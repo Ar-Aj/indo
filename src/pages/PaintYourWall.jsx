@@ -145,6 +145,10 @@ const PaintYourWall = () => {
       
       const response = await paintAPI.processVisualization(formData);
       
+      console.log('API Response received:', response);
+      console.log('Project data:', response.project);
+      console.log('Processed image URL:', response.project?.processedImage);
+      
       setResult(response.project);
       setProcessingStep('Visualization complete!');
       
@@ -321,6 +325,15 @@ const PaintYourWall = () => {
                     src={result.processedImage} 
                     alt="Painted room" 
                     className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      console.error('Failed to load processed image:', result.processedImage);
+                      console.error('Image error event:', e);
+                      e.target.style.border = '2px solid red';
+                      e.target.alt = 'Failed to load processed image';
+                    }}
+                    onLoad={() => {
+                      console.log('Processed image loaded successfully:', result.processedImage);
+                    }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
                 </div>
@@ -406,6 +419,20 @@ const PaintYourWall = () => {
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Debug Information (Development only) */}
+            {result.debug && (
+              <div className="card p-6 mb-6 bg-gray-50">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3">Debug Information</h4>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>Paint Result Keys:</strong> {result.debug.paintResultKeys?.join(', ')}</p>
+                  <p><strong>Paint Result URL:</strong> {result.debug.paintResultUrl}</p>
+                  <p><strong>Paint Result Image:</strong> {result.debug.paintResultImage}</p>
+                  <p><strong>Paint Result Message:</strong> {result.debug.paintResultMessage}</p>
+                  <p><strong>Final Processed Image URL:</strong> {result.processedImage}</p>
                 </div>
               </div>
             )}

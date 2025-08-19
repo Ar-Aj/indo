@@ -229,6 +229,8 @@ class PaintVisualizationService {
 
   // Step 3: Apply paint color using getimg.ai Stable Diffusion XL Inpainting
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName) {
+    let resizedImages = null;
+    
     try {
       // Check if API key is configured and valid
       const apiKey = process.env.GETIMG_API_KEY;
@@ -243,7 +245,7 @@ class PaintVisualizationService {
       console.log('Applying paint color using getimg.ai API...');
 
       // Resize images first for API compatibility
-      const resizedImages = await this.resizeForAPI(originalImagePath, maskImagePath);
+      resizedImages = await this.resizeForAPI(originalImagePath, maskImagePath);
 
       // Convert resized images to base64
       const imageBase64 = fs.readFileSync(resizedImages.imagePath, 'base64');
@@ -261,18 +263,39 @@ class PaintVisualizationService {
         mask_image: cleanMaskBase64,
         prompt: `paint the wall in ${colorName} color, realistic interior design`,
         width: resizedImages.width,
-        height: resizedImages.height
+        height: resizedImages.height,
+        num_inference_steps: 25,
+        guidance_scale: 7.5,
+        strength: 0.8
       };
 
-      const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
-console.log('getimg.ai API request successful');
-console.log('API Response:', JSON.stringify(response.data, null, 2)); // ADD THIS LINE
+      const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
+      console.log('getimg.ai API request successful');
+      console.log('API Response:', JSON.stringify(response.data, null, 2));
 
-return response.data;
+      // getimg.ai returns the image URL in the 'output' array
+      if (response.data && response.data.output && response.data.output.length > 0) {
+        // Clean up temporary files after successful processing
+        try {
+          if (fs.existsSync(resizedImages.imagePath)) {
+            fs.unlinkSync(resizedImages.imagePath);
+          }
+          if (fs.existsSync(resizedImages.maskPath)) {
+            fs.unlinkSync(resizedImages.maskPath);
+          }
+        } catch (cleanupError) {
+          console.warn('Failed to clean up temporary files:', cleanupError.message);
+        }
 
-      return response.data;
-
-      return response.data;
+        return {
+          url: response.data.output[0],
+          image: response.data.output[0],
+          id: response.data.id,
+          generationTime: response.data.generationTime
+        };
+      } else {
+        throw new Error('No image generated - invalid API response format');
+      }
     } catch (error) {
       // Log error details without the huge base64 data
       const errorInfo = {
@@ -293,10 +316,26 @@ return response.data;
 
       console.log('Falling back to original image');
 
+      // Clean up temporary files
+      try {
+        if (resizedImages) {
+          if (fs.existsSync(resizedImages.imagePath)) {
+            fs.unlinkSync(resizedImages.imagePath);
+          }
+          if (fs.existsSync(resizedImages.maskPath)) {
+            fs.unlinkSync(resizedImages.maskPath);
+          }
+        }
+      } catch (cleanupError) {
+        console.warn('Failed to clean up temporary files:', cleanupError.message);
+      }
+
       // Fallback to original image if API fails
       return {
         url: `/uploads/${path.basename(originalImagePath)}`,
-        message: 'API unavailable - showing original image'
+        image: `/uploads/${path.basename(originalImagePath)}`,
+        message: 'API unavailable - showing original image',
+        error: errorInfo
       };
     }
   }
