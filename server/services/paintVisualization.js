@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
-  
+
   // Step 1: Detect furniture and surfaces using Roboflow
   async detectFurnitureSurfaces(imagePath) {
     try {
@@ -33,19 +33,20 @@ class PaintVisualizationService {
       }
 
       console.log('Detecting furniture and surfaces using Roboflow API...');
-      
+
       const formData = new FormData();
       formData.append('file', fs.createReadStream(imagePath));
-      
+
       const response = await roboflowAPI.post(
-        `/furniture-detection-2kump/1?api_key=${apiKey}`, 
+        `/furniture-detection-2kump/1?api_key=${apiKey}`,
         formData,
         {
           headers: formData.getHeaders()
         }
       );
-      
+
       console.log('Roboflow API request successful');
+      console.log('Detection results:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
       const errorInfo = {
@@ -54,15 +55,15 @@ class PaintVisualizationService {
         message: error.message
       };
       console.error('Furniture detection error:', errorInfo);
-      
+
       if (error.response?.status === 401) {
         console.warn('Roboflow API authentication failed - check your API key');
       } else {
         console.warn('Roboflow API request failed');
       }
-      
+
       console.log('Falling back to mock detection');
-      
+
       // Fallback to mock data if API fails
       return {
         predictions: [{
@@ -82,7 +83,10 @@ class PaintVisualizationService {
     try {
       const image = sharp(imagePath);
       const { width, height } = await image.metadata();
-      
+
+      console.log(`Image dimensions: ${width}x${height}`);
+      console.log(`Total predictions: ${detectionResults.predictions?.length || 0}`);
+
       // Create a black mask
       let mask = sharp({
         create: {
@@ -94,16 +98,23 @@ class PaintVisualizationService {
       });
 
       // Find walls or paintable surfaces from detection
-      const paintableSurfaces = detectionResults.predictions?.filter(pred => 
-        ['wall', 'furniture', 'cabinet', 'door'].includes(pred.class.toLowerCase())
+      const paintableSurfaces = detectionResults.predictions?.filter(pred =>
+        ['wall', 'furniture', 'cabinet', 'door', 'couch', 'sofa', 'chair', 'bed', 'table'].includes(pred.class.toLowerCase())
       ) || [];
+
+      console.log(`Found ${paintableSurfaces.length} paintable surfaces`);
+      paintableSurfaces.forEach((surface, index) => {
+        console.log(`Surface ${index + 1}: class=${surface.class}, confidence=${surface.confidence}, x=${surface.x}, y=${surface.y}, width=${surface.width}, height=${surface.height}`);
+      });
 
       if (paintableSurfaces.length > 0) {
         // Create white rectangles for detected surfaces
         const surface = paintableSurfaces[0]; // Use first detected surface
         const x = Math.round(surface.x - surface.width / 2);
         const y = Math.round(surface.y - surface.height / 2);
-        
+
+        console.log(`Creating mask for surface: x=${x}, y=${y}, width=${Math.round(surface.width)}, height=${Math.round(surface.height)}`);
+
         mask = mask.composite([{
           input: {
             create: {
@@ -116,11 +127,36 @@ class PaintVisualizationService {
           top: Math.max(0, y),
           left: Math.max(0, x)
         }]);
+
+        console.log('Mask created successfully with white area');
+      } else {
+        console.warn('No paintable surfaces found, creating a default mask with center rectangle');
+        // Create a default mask with a center rectangle if no surfaces detected
+        const defaultWidth = Math.round(width * 0.6);
+        const defaultHeight = Math.round(height * 0.4);
+        const defaultX = Math.round((width - defaultWidth) / 2);
+        const defaultY = Math.round((height - defaultHeight) / 2);
+
+        mask = mask.composite([{
+          input: {
+            create: {
+              width: defaultWidth,
+              height: defaultHeight,
+              channels: 3,
+              background: { r: 255, g: 255, b: 255 }
+            }
+          },
+          top: defaultY,
+          left: defaultX
+        }]);
+
+        console.log(`Default mask created: ${defaultWidth}x${defaultHeight} at ${defaultX},${defaultY}`);
       }
 
       const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
       await mask.png().toFile(maskPath);
-      
+
+      console.log(`Mask saved to: ${maskPath}`);
       return maskPath;
     } catch (error) {
       console.error('Mask creation error:', error);
@@ -142,36 +178,26 @@ class PaintVisualizationService {
       }
 
       console.log('Applying paint color using getimg.ai API...');
-      
+
       // Convert images to base64 (but don't log them to avoid console spam)
       const imageBase64 = fs.readFileSync(originalImagePath, 'base64');
       const maskBase64 = fs.readFileSync(maskImagePath, 'base64');
-      
+
       console.log(`Image size: ${Math.round(imageBase64.length / 1024)}KB, Mask size: ${Math.round(maskBase64.length / 1024)}KB`);
-      
+
       // Ensure base64 strings have no data URL prefix (they should be pure base64)
       const cleanImageBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMaskBase64 = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-      
+
       const payload = {
-        model: "stable-diffusion-xl-v1-0",
-        image: cleanImageBase64,
-        mask: cleanMaskBase64,
-        prompt: `paint the wall in ${colorName} color, room, realistic lighting, professional interior photo`,
-        negative_prompt: "cartoon, painting, illustration, blurry, low quality, distorted",
-        width: 1024,
-        height: 1024,
-        steps: 25,
-        guidance: 7.5,
-        strength: 0.8,
-        scheduler: "euler_a",
-        output_format: "jpeg",
-        response_format: "url"
-      };
+  image: cleanImageBase64,
+  mask: cleanMaskBase64,
+  prompt: `paint the wall in ${colorName} color, realistic interior design`
+};
 
       const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
       console.log('getimg.ai API request successful');
-      
+
       return response.data;
     } catch (error) {
       // Log error details without the huge base64 data
@@ -182,7 +208,7 @@ class PaintVisualizationService {
         data: error.response?.data // This will show the specific API error message
       };
       console.error('Paint application error:', errorInfo);
-      
+
       if (error.response?.status === 401) {
         console.warn('getimg.ai API authentication failed - check your API key');
       } else if (error.response?.status === 429) {
@@ -190,9 +216,9 @@ class PaintVisualizationService {
       } else {
         console.warn('getimg.ai API request failed');
       }
-      
+
       console.log('Falling back to original image');
-      
+
       // Fallback to original image if API fails
       return {
         url: `/uploads/${path.basename(originalImagePath)}`,
@@ -206,22 +232,22 @@ class PaintVisualizationService {
     try {
       const hsl = this.hexToHsl(baseColorHex);
       const recommendations = [];
-      
+
       // Complementary color (180° hue shift)
       const complementaryHue = (hsl.h + 180) % 360;
       const complementary = this.findClosestColor(complementaryHue, hsl.s, hsl.l, paintColorsDatabase);
       if (complementary) recommendations.push(complementary);
-      
+
       // Analogous colors (±30° hue shift)
       const analogous1Hue = (hsl.h + 30) % 360;
       const analogous2Hue = (hsl.h - 30 + 360) % 360;
-      
+
       const analogous1 = this.findClosestColor(analogous1Hue, hsl.s, hsl.l, paintColorsDatabase);
       const analogous2 = this.findClosestColor(analogous2Hue, hsl.s, hsl.l, paintColorsDatabase);
-      
+
       if (analogous1) recommendations.push(analogous1);
       if (analogous2) recommendations.push(analogous2);
-      
+
       return recommendations.slice(0, 3);
     } catch (error) {
       console.error('Color recommendation error:', error);
@@ -233,11 +259,11 @@ class PaintVisualizationService {
     const r = parseInt(hex.substr(1, 2), 16) / 255;
     const g = parseInt(hex.substr(3, 2), 16) / 255;
     const b = parseInt(hex.substr(5, 2), 16) / 255;
-    
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     let h, s, l = (max + min) / 2;
-    
+
     if (max === min) {
       h = s = 0;
     } else {
@@ -250,13 +276,13 @@ class PaintVisualizationService {
       }
       h /= 6;
     }
-    
+
     return { h: h * 360, s: s * 100, l: l * 100 };
   }
 
   findClosestColor(targetHue, targetSat, targetLight, colorsDatabase) {
     if (!colorsDatabase || colorsDatabase.length === 0) return null;
-    
+
     return colorsDatabase.find(color => {
       const colorHsl = this.hexToHsl(color.hexCode);
       const hueDiff = Math.abs(colorHsl.h - targetHue);
