@@ -150,22 +150,18 @@ class PaintVisualizationService {
       console.log(`Image size: ${Math.round(imageBase64.length / 1024)}KB, Mask size: ${Math.round(maskBase64.length / 1024)}KB`);
       
       const payload = {
-        model: "stable-diffusion-xl-v1-0",
-        image: imageBase64,
-        mask: maskBase64,
         prompt: `realistic interior wall painted in ${colorName} color ${colorHex}, professional lighting, high quality, photorealistic`,
         negative_prompt: "blurry, low quality, distorted, unrealistic colors, cartoon, painting, illustration",
+        image: imageBase64,
+        mask: maskBase64,
         width: 1024,
         height: 1024,
         steps: 25,
-        guidance: 7.5,
-        strength: 0.8,
-        scheduler: "euler_a",
-        output_format: "jpeg",
-        response_format: "url"
+        guidance_scale: 7.5,
+        strength: 0.8
       };
 
-      const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
+      const response = await getimgAPI.post('/essential-v1/inpaint', payload);
       console.log('getimg.ai API request successful');
       
       return response.data;
@@ -174,7 +170,8 @@ class PaintVisualizationService {
       const errorInfo = {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        message: error.message
+        message: error.message,
+        data: error.response?.data // This will show the specific API error message
       };
       console.error('Paint application error:', errorInfo);
       
