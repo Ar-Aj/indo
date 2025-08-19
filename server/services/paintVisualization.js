@@ -15,9 +15,10 @@ class PaintVisualizationService {
   // Step 1: Detect furniture and surfaces using Roboflow
   async detectFurnitureSurfaces(imagePath) {
     try {
-      // Check if API key is configured
-      if (!process.env.ROBOFLOW_API_KEY) {
-        console.warn('Roboflow API key not configured, using mock detection');
+      // Check if API key is configured and valid
+      const apiKey = process.env.ROBOFLOW_API_KEY;
+      if (!apiKey || apiKey === 'your-roboflow-api-key-here') {
+        console.log('Roboflow API key not configured, using mock detection');
         // Return mock detection data for development
         return {
           predictions: [{
@@ -31,22 +32,38 @@ class PaintVisualizationService {
         };
       }
 
+      console.log('Detecting furniture and surfaces using Roboflow API...');
+      
       const formData = new FormData();
       formData.append('file', fs.createReadStream(imagePath));
       
       const response = await roboflowAPI.post(
-        `/furniture-detection-2kump/1?api_key=${process.env.ROBOFLOW_API_KEY}`, 
+        `/furniture-detection-2kump/1?api_key=${apiKey}`, 
         formData,
         {
           headers: formData.getHeaders()
         }
       );
       
+      console.log('Roboflow API request successful');
       return response.data;
     } catch (error) {
-      console.error('Furniture detection error:', error);
+      const errorInfo = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.message
+      };
+      console.error('Furniture detection error:', errorInfo);
+      
+      if (error.response?.status === 401) {
+        console.warn('Roboflow API authentication failed - check your API key');
+      } else {
+        console.warn('Roboflow API request failed');
+      }
+      
+      console.log('Falling back to mock detection');
+      
       // Fallback to mock data if API fails
-      console.warn('Using mock detection due to API failure');
       return {
         predictions: [{
           class: 'wall',
@@ -114,26 +131,34 @@ class PaintVisualizationService {
   // Step 3: Apply paint color using getimg.ai Stable Diffusion XL Inpainting
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName) {
     try {
-      // Check if API key is configured
-      if (!process.env.GETIMG_API_KEY) {
-        console.warn('getimg.ai API key not configured, returning original image');
-        // For development, return the original image path as a mock result
+      // Check if API key is configured and valid
+      const apiKey = process.env.GETIMG_API_KEY;
+      if (!apiKey || apiKey === 'your-getimg-api-key-here') {
+        console.log('getimg.ai API key not configured, using original image as result');
         return {
           url: `/uploads/${path.basename(originalImagePath)}`,
-          message: 'Mock result - API key not configured'
+          message: 'Development mode - API key not configured'
         };
       }
 
-      // Convert images to base64
+      console.log('Applying paint color using getimg.ai API...');
+      
+      // Convert images to base64 (but don't log them to avoid console spam)
       const imageBase64 = fs.readFileSync(originalImagePath, 'base64');
       const maskBase64 = fs.readFileSync(maskImagePath, 'base64');
       
+      console.log(`Image size: ${Math.round(imageBase64.length / 1024)}KB, Mask size: ${Math.round(maskBase64.length / 1024)}KB`);
+      
+      // Ensure base64 strings have no data URL prefix (they should be pure base64)
+      const cleanImageBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      const cleanMaskBase64 = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      
       const payload = {
         model: "stable-diffusion-xl-v1-0",
-        image: imageBase64,
-        mask: maskBase64,
-        prompt: `realistic interior wall painted in ${colorName} color ${colorHex}, professional lighting, high quality, photorealistic`,
-        negative_prompt: "blurry, low quality, distorted, unrealistic colors, cartoon, painting, illustration",
+        image: cleanImageBase64,
+        mask: cleanMaskBase64,
+        prompt: `paint the wall in ${colorName} color, room, realistic lighting, professional interior photo`,
+        negative_prompt: "cartoon, painting, illustration, blurry, low quality, distorted",
         width: 1024,
         height: 1024,
         steps: 25,
@@ -144,16 +169,34 @@ class PaintVisualizationService {
         response_format: "url"
       };
 
-      const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
+      const response = await getimgAPI.post('/stable-diffusion-xl/inpainting', payload);
+      console.log('getimg.ai API request successful');
       
       return response.data;
     } catch (error) {
-      console.error('Paint application error:', error);
-      console.warn('getimg.ai API failed, returning original image');
+      // Log error details without the huge base64 data
+      const errorInfo = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.message,
+        data: error.response?.data // This will show the specific API error message
+      };
+      console.error('Paint application error:', errorInfo);
+      
+      if (error.response?.status === 401) {
+        console.warn('getimg.ai API authentication failed - check your API key');
+      } else if (error.response?.status === 429) {
+        console.warn('getimg.ai API rate limit exceeded');
+      } else {
+        console.warn('getimg.ai API request failed');
+      }
+      
+      console.log('Falling back to original image');
+      
       // Fallback to original image if API fails
       return {
         url: `/uploads/${path.basename(originalImagePath)}`,
-        message: 'Fallback result - API failed'
+        message: 'API unavailable - showing original image'
       };
     }
   }

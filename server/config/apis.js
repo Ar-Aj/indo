@@ -10,10 +10,18 @@ const roboflowAPI = axios.create({
 const getimgAPI = axios.create({
   baseURL: 'https://api.getimg.ai/v1',
   headers: {
-    'Authorization': `Bearer ${process.env.GETIMG_API_KEY}`,
     'Content-Type': 'application/json'
   },
   timeout: 60000
+});
+
+// Add request interceptor to set authorization header dynamically
+getimgAPI.interceptors.request.use((config) => {
+  const apiKey = process.env.GETIMG_API_KEY;
+  if (apiKey && apiKey !== 'your-getimg-api-key-here') {
+    config.headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return config;
 });
 
 export { roboflowAPI, getimgAPI };
