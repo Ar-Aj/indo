@@ -45,14 +45,23 @@ const upload = multer({
 // PROTECTED: Process paint visualization
 router.post('/process', authenticate, upload.single('image'), async (req, res) => {
   try {
-    const { colorId, projectName } = req.body;
+    const { colorId, projectName, maskingMethod, manualMask } = req.body;
     const imagePath = req.file.path;
     
     console.log('Starting paint visualization process...');
+    console.log('Masking method:', maskingMethod);
     
     // Validate inputs
     if (!colorId) {
       return res.status(400).json({ error: 'Color selection is required' });
+    }
+    
+    if (!maskingMethod) {
+      return res.status(400).json({ error: 'Masking method is required' });
+    }
+    
+    if (maskingMethod === 'manual' && !manualMask) {
+      return res.status(400).json({ error: 'Manual mask is required when using manual masking' });
     }
     
     // Get selected color from database
@@ -63,13 +72,31 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
 
     console.log('Selected color:', selectedColor.name);
 
-    // Step 1: Detect surfaces using Roboflow
-    console.log('Detecting furniture and surfaces...');
-    const detectionResults = await paintService.detectFurnitureSurfaces(imagePath);
-    
-    // Step 2: Create mask from detection results
-    console.log('Creating mask from detection results...');
-    const maskPath = await paintService.createMaskFromDetection(imagePath, detectionResults);
+    let maskPath;
+    let detectionResults = { predictions: [] };
+
+    if (maskingMethod === 'manual') {
+      // Step 1: Use manual mask provided by user
+      console.log('Using manual mask provided by user...');
+      maskPath = await paintService.saveManualMask(manualMask, imagePath);
+      
+      // Create mock detection results for manual masking
+      detectionResults = {
+        predictions: [{
+          class: 'manual_selection',
+          confidence: 1.0,
+          manual: true
+        }]
+      };
+    } else {
+      // Step 1: Detect walls, ceiling, and floor using Roboflow
+      console.log('Detecting walls, ceiling, and floor...');
+      detectionResults = await paintService.detectWallSurfaces(imagePath);
+      
+      // Step 2: Create mask from wall detection results
+      console.log('Creating mask from wall detection results...');
+      maskPath = await paintService.createMaskFromWallDetection(imagePath, detectionResults);
+    }
     
     // Step 3: Apply paint color using getimg.ai
     console.log('Applying paint color...');
@@ -111,7 +138,10 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         processedImage: paintResult.url,
         selectedColor: selectedColor,
         recommendations: recommendations,
-        detectedSurfaces: detectionResults.predictions?.length || 0
+        maskingMethod: maskingMethod,
+        detectedWalls: detectionResults.predictions?.filter(p => p.class.toLowerCase() === 'wall').length || 0,
+        detectedSurfaces: detectionResults.predictions?.length || 0,
+        isManualMask: maskingMethod === 'manual'
       }
     });
     
