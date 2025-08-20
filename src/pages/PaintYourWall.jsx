@@ -105,6 +105,8 @@ const PaintYourWall = () => {
   const initializeCanvas = useCallback(() => {
     if (!canvasRef.current || !maskCanvasRef.current || !imagePreview) return;
 
+    console.log('Initializing canvas with image:', imagePreview.substring(0, 50) + '...');
+
     const canvas = canvasRef.current;
     const maskCanvas = maskCanvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -112,39 +114,60 @@ const PaintYourWall = () => {
 
     // Create image object
     const img = new Image();
+    img.crossOrigin = 'anonymous'; // Handle CORS if needed
+    
     img.onload = () => {
+      console.log('Image loaded successfully:', img.width, 'x', img.height);
+      
       // Responsive canvas sizing
       const isMobile = window.innerWidth < 640;
-      const maxWidth = isMobile ? Math.min(window.innerWidth - 40, 500) : Math.min(800, window.innerWidth - 200);
+      const containerWidth = isMobile ? Math.min(window.innerWidth - 40, 500) : Math.min(800, window.innerWidth - 200);
       const aspectRatio = img.height / img.width;
-      const canvasWidth = Math.min(img.width, maxWidth);
-      const canvasHeight = canvasWidth * aspectRatio;
+      
+      let canvasWidth = Math.min(img.width, containerWidth);
+      let canvasHeight = canvasWidth * aspectRatio;
 
       // Ensure canvas doesn't exceed viewport height
-      const maxHeight = isMobile ? window.innerHeight * 0.6 : window.innerHeight * 0.7;
-      let finalWidth = canvasWidth;
-      let finalHeight = canvasHeight;
+      const maxHeight = isMobile ? window.innerHeight * 0.5 : window.innerHeight * 0.6;
       
       if (canvasHeight > maxHeight) {
-        finalHeight = maxHeight;
-        finalWidth = finalHeight / aspectRatio;
+        canvasHeight = maxHeight;
+        canvasWidth = canvasHeight / aspectRatio;
       }
 
-      canvas.width = finalWidth;
-      canvas.height = finalHeight;
-      maskCanvas.width = finalWidth;
-      maskCanvas.height = finalHeight;
+      // Set canvas display size
+      canvas.style.width = canvasWidth + 'px';
+      canvas.style.height = canvasHeight + 'px';
+      maskCanvas.style.width = canvasWidth + 'px';
+      maskCanvas.style.height = canvasHeight + 'px';
+
+      // Set actual canvas size (for high DPI)
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      canvas.width = canvasWidth * devicePixelRatio;
+      canvas.height = canvasHeight * devicePixelRatio;
+      maskCanvas.width = canvasWidth * devicePixelRatio;
+      maskCanvas.height = canvasHeight * devicePixelRatio;
+
+      // Scale context for high DPI
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      maskCtx.scale(devicePixelRatio, devicePixelRatio);
 
       // Draw image on main canvas
-      ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      console.log('Image drawn on canvas:', canvasWidth, 'x', canvasHeight);
 
       // Initialize mask canvas with semi-transparent overlay
-      maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Slightly darker for better visibility
-      maskCtx.fillRect(0, 0, finalWidth, finalHeight);
+      maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      maskCtx.fillRect(0, 0, canvasWidth, canvasHeight);
       maskCtx.globalCompositeOperation = 'source-over';
       
-      console.log(`Canvas initialized: ${finalWidth}x${finalHeight} (original: ${img.width}x${img.height})`);
+      console.log(`Canvas initialized successfully: ${canvasWidth}x${canvasHeight} (DPR: ${devicePixelRatio})`);
     };
+
+    img.onerror = (error) => {
+      console.error('Failed to load image for canvas:', error);
+    };
+
     img.src = imagePreview;
   }, [imagePreview]);
 
@@ -165,19 +188,13 @@ const PaintYourWall = () => {
     const rect = canvas.getBoundingClientRect();
     const ctx = canvas.getContext('2d');
 
-    // Handle high DPI displays and scaling
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-
-    // Adjust brush size for canvas scale
-    const adjustedBrushSize = brushSize * Math.min(scaleX, scaleY);
+    // Get coordinates relative to the canvas display size
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
     ctx.globalCompositeOperation = 'destination-out'; // Eraser mode (reveals image)
     ctx.beginPath();
-    ctx.arc(x, y, adjustedBrushSize, 0, 2 * Math.PI);
+    ctx.arc(x, y, brushSize, 0, 2 * Math.PI);
     ctx.fillStyle = 'rgba(255, 255, 255, 1)';
     ctx.fill();
   };
@@ -186,18 +203,22 @@ const PaintYourWall = () => {
     if (!maskCanvasRef.current) return;
     const canvas = maskCanvasRef.current;
     const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Match the initial overlay
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
   };
 
   const fillMask = () => {
     if (!maskCanvasRef.current) return;
     const canvas = maskCanvasRef.current;
     const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
   };
 
   const saveMask = () => {
@@ -267,10 +288,14 @@ const PaintYourWall = () => {
 
   // Initialize canvas when masking tool is shown
   useEffect(() => {
-    if (showMaskingTool) {
-      setTimeout(initializeCanvas, 100); // Small delay to ensure DOM is ready
+    if (showMaskingTool && imagePreview) {
+      console.log('Masking tool opened, initializing canvas...');
+      // Multiple attempts to ensure canvas initializes
+      setTimeout(initializeCanvas, 100);
+      setTimeout(initializeCanvas, 300);
+      setTimeout(initializeCanvas, 500);
     }
-  }, [showMaskingTool, initializeCanvas]);
+  }, [showMaskingTool, imagePreview, initializeCanvas]);
 
   const onSubmit = async (data) => {
     if (!selectedImage) {
@@ -903,27 +928,25 @@ const PaintYourWall = () => {
                   {/* Canvas Container - Responsive and Scrollable */}
                   <div className="flex-1 overflow-auto bg-gray-100">
                     <div className="min-h-full flex items-center justify-center p-4">
-                      <div className="relative max-w-full max-h-full">
+                      <div className="relative">
+                        {/* Background Image Canvas */}
                         <canvas
                           ref={canvasRef}
-                          className="absolute top-0 left-0 rounded-lg shadow-lg max-w-full max-h-full"
+                          className="rounded-lg shadow-lg border border-gray-300"
                           style={{ 
-                            zIndex: 1,
-                            maxWidth: '100%',
-                            maxHeight: '70vh',
-                            width: 'auto',
-                            height: 'auto'
+                            display: 'block',
+                            position: 'relative',
+                            zIndex: 1
                           }}
                         />
+                        
+                        {/* Overlay Mask Canvas */}
                         <canvas
                           ref={maskCanvasRef}
-                          className="absolute top-0 left-0 rounded-lg cursor-crosshair max-w-full max-h-full touch-none"
+                          className="absolute top-0 left-0 rounded-lg cursor-crosshair touch-none"
                           style={{ 
                             zIndex: 2,
-                            maxWidth: '100%',
-                            maxHeight: '70vh',
-                            width: 'auto',
-                            height: 'auto'
+                            pointerEvents: 'auto'
                           }}
                           onMouseDown={startDrawing}
                           onMouseUp={stopDrawing}
@@ -953,6 +976,39 @@ const PaintYourWall = () => {
                             stopDrawing();
                           }}
                         />
+                        
+                        {/* Debug info and loading indicator */}
+                        {(!canvasRef.current?.width || !canvasRef.current?.height) && (
+                          <div className="relative bg-gray-200 rounded-lg min-h-[300px] min-w-[400px] flex items-center justify-center">
+                            {/* Fallback image preview */}
+                            {imagePreview && (
+                              <img 
+                                src={imagePreview} 
+                                alt="Preview" 
+                                className="max-w-full max-h-full rounded-lg opacity-50"
+                                style={{ maxHeight: '300px' }}
+                              />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center bg-white bg-opacity-90 p-4 rounded-lg">
+                                <RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-600">Setting up canvas...</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Canvas: {canvasRef.current?.width || 0}x{canvasRef.current?.height || 0}
+                                </p>
+                                <button 
+                                  onClick={() => {
+                                    console.log('Manual canvas refresh triggered');
+                                    initializeCanvas();
+                                  }}
+                                  className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Mobile Helper Text */}
                         <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 sm:hidden">
