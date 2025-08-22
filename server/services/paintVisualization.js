@@ -249,21 +249,59 @@ class PaintVisualizationService {
       const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // Updated payload for Realistic Vision v5.1 Inpainting model
+      // PAYLOAD OPTION 1: High Color Fidelity (RECOMMENDED - Currently Active)
       const payload = {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `interior wall painted in ${colorName} color ${colorHex}, smooth paint finish, natural indoor lighting, realistic room interior, clean wall surface`,
-        negative_prompt: 'blurry, low quality, distorted, oversaturated, undersaturated, wrong colors, artifacts, noise, furniture, decorations, objects, people, text, windows, doors, architectural changes',
-        strength: 0.75,           // Optimal strength for realistic results
-        guidance: 7.5,            // Balanced guidance for quality and prompt adherence
-        steps: 30,                // Sufficient steps for high quality
+        prompt: `wall surface painted with exact ${colorHex} paint color, ${colorName} paint, solid uniform color coverage, flat matte finish, accurate color temperature, precise color matching`,
+        negative_prompt: 'color variations, color gradients, wrong color, off-color, color shift, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts',
+        strength: 0.85,              // Higher strength for better color adherence
+        cfg_scale: 12.0,             // High CFG for strict prompt following
+        steps: 40,                   // More steps for quality
+        scheduler: 'DPM++ 2M Karras', // Best scheduler for realistic results
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
-        response_format: 'url'
+        response_format: 'url',
+        seed: Math.floor(Math.random() * 1000000) // Random seed for variation
       };
+
+      // PAYLOAD OPTION 2: Maximum Color Control (Uncomment to test)
+      // const payload = {
+      //   model: 'realistic-vision-v5-1-inpainting',
+      //   image: cleanImage,
+      //   mask_image: cleanMask,
+      //   prompt: `${colorName} ${colorHex} paint applied to wall, exact color match, solid paint coverage, no color variation, uniform paint application, realistic interior wall`,
+      //   negative_prompt: 'wrong hue, incorrect color, color deviation, saturation changes, brightness changes, color mixing, gradient, texture, shine, gloss, reflections, shadows, lighting effects on color',
+      //   strength: 0.9,               // Maximum strength for color control
+      //   cfg_scale: 15.0,             // Very high CFG for exact color matching
+      //   steps: 50,                   // Maximum steps for precision
+      //   scheduler: 'Euler a',        // Alternative scheduler for color accuracy
+      //   width: newWidth,
+      //   height: newHeight,
+      //   output_format: 'jpeg',
+      //   response_format: 'url',
+      //   seed: 42                     // Fixed seed for consistency
+      // };
+
+      // PAYLOAD OPTION 3: Balanced Realism with Color Focus (Uncomment to test)
+      // const payload = {
+      //   model: 'realistic-vision-v5-1-inpainting',
+      //   image: cleanImage,
+      //   mask_image: cleanMask,
+      //   prompt: `interior wall painted in precise ${colorName} color ${colorHex}, professional paint job, smooth even finish, accurate color representation, realistic lighting, clean wall surface`,
+      //   negative_prompt: 'color inaccuracy, wrong shade, color distortion, uneven paint, paint drips, brush marks, texture variations, glossy surface, color bleeding, oversaturation, undersaturation, color shift',
+      //   strength: 0.8,               // Balanced strength
+      //   cfg_scale: 10.0,             // Moderate CFG for balance
+      //   steps: 35,                   // Good balance of quality and speed
+      //   scheduler: 'DPM++ SDE Karras', // Excellent for realistic results
+      //   width: newWidth,
+      //   height: newHeight,
+      //   output_format: 'jpeg',
+      //   response_format: 'url',
+      //   seed: Date.now() % 1000000   // Time-based seed for variation
+      // };
 
       console.log(`the ${colorName} has ${colorHex}`);
 
