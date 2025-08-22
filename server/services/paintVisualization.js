@@ -254,15 +254,17 @@ class PaintVisualizationService {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `interior wall painted in ${colorName} color ${colorHex}, smooth paint finish, natural indoor lighting, realistic room interior, clean wall surface`,
-        negative_prompt: 'blurry, low quality, distorted, oversaturated, undersaturated, wrong colors, artifacts, noise, furniture, decorations, objects, people, text, windows, doors, architectural changes',
-        strength: 0.75,           // Optimal strength for realistic results
-        guidance: 7.5,            // Balanced guidance for quality and prompt adherence
-        steps: 30,                // Sufficient steps for high quality
+        prompt: `wall surface painted with exact ${colorHex} paint color, ${colorName} paint, solid uniform color coverage, flat matte finish, accurate color temperature, precise color matching`,
+        negative_prompt: 'color variations, color gradients, wrong color, off-color, color shift, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts',
+        strength: 0.85,              // Higher strength for better color adherence
+        cfg_scale: 12.0,             // High CFG for strict prompt following
+        steps: 40,                   // More steps for quality
+      
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
-        response_format: 'url'
+        response_format: 'url',
+        seed: Math.floor(Math.random() * 1000000) // Random seed for variation
       };
 
       console.log(`the ${colorName} has ${colorHex}`);
@@ -307,7 +309,7 @@ class PaintVisualizationService {
     }
   }
 
-  
+
 
   // Step 4: Generate color recommendations based on color theory
   generateColorRecommendations(baseColorHex, paintColorsDatabase) {
@@ -336,7 +338,7 @@ class PaintVisualizationService {
       return [];
     }
   }
-  
+
 
   hexToHsl(hex) {
     const r = parseInt(hex.substr(1, 2), 16) / 255;
