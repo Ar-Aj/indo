@@ -235,7 +235,7 @@ class PaintVisualizationService {
         };
       }
 
-      console.log('Applying paint color using getimg.ai API...');
+      console.log('Applying paint color using getimg.ai Realistic Vision v5.1 Inpainting model...');
 
 
       // Resize images first for API compatibility
@@ -249,44 +249,27 @@ class PaintVisualizationService {
       const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // PROPER 2025 getimg.ai payload based on your research
-      // const payload = {
-      //   model: 'stable-diffusion-xl-v1-0',
-      //   image: cleanImage,
-      //   mask_image: cleanMask,
-      //   prompt: `${colorName} painted wall, accurate color temperature, natural indoor lighting, realistic interior paint finish`,
-      //   negative_prompt: 'wrong color temperature, harsh lighting, color shifts, unnatural colors, flat lighting, oversaturated, cartoon, low quality, extra objects, new furniture, people, text',
-      //   strength: 0.75,
-      //   guidance: 7.8,
-      //   steps: 27,
-      //   width: newWidth,
-      //   height: newHeight,
-      //   output_format: 'jpeg',
-      //   response_format: 'url',
-      //   maskMargin: 48 // Add 48 pixels margin around mask to improve edge blending
-      // };
-
+      // Updated payload for Realistic Vision v5.1 Inpainting model
       const payload = {
-        model: 'stable-diffusion-xl-v1-0',
+        model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
-        negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
-        strength: 0.85,           // Higher strength for better color accuracy
-        guidance: 12.0,           // Much higher guidance for strict prompt following
-        steps: 35,                // More steps for better quality and accuracy
+        prompt: `interior wall painted in ${colorName} color ${colorHex}, smooth paint finish, natural indoor lighting, realistic room interior, clean wall surface`,
+        negative_prompt: 'blurry, low quality, distorted, oversaturated, undersaturated, wrong colors, artifacts, noise, furniture, decorations, objects, people, text, windows, doors, architectural changes',
+        strength: 0.75,           // Optimal strength for realistic results
+        guidance: 7.5,            // Balanced guidance for quality and prompt adherence
+        steps: 30,                // Sufficient steps for high quality
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
-        response_format: 'url',
-        seed: 420
+        response_format: 'url'
       };
 
       console.log(`the ${colorName} has ${colorHex}`);
 
       console.log(`Sending to getimg.ai: ${payload.width}x${payload.height}`);
 
-      const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
+      const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
       console.log('getimg.ai API request successful');
 
       // Clean up temporary resized files
