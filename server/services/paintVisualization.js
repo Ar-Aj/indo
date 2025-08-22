@@ -79,23 +79,23 @@ class PaintVisualizationService {
   async saveManualMask(manualMaskBase64, originalImagePath) {
     try {
       console.log('Saving manual mask provided by user...');
-      
+
       // Get image dimensions
       const image = sharp(originalImagePath);
       const { width, height } = await image.metadata();
-      
+
       // Convert base64 to buffer
       const maskBuffer = Buffer.from(manualMaskBase64, 'base64');
-      
+
       // Generate unique filename
       const maskPath = path.join(uploadsDir, `manual-mask-${Date.now()}.png`);
-      
+
       // Resize mask to match original image dimensions
       await sharp(maskBuffer)
         .resize(width, height)
         .png()
         .toFile(maskPath);
-      
+
       console.log(`Manual mask saved to: ${maskPath}`);
       return maskPath;
     } catch (error) {
@@ -135,9 +135,9 @@ class PaintVisualizationService {
         const wallComposites = wallSurfaces.map(wall => {
           const x = Math.round(wall.x - wall.width / 2);
           const y = Math.round(wall.y - wall.height / 2);
-          
+
           console.log(`Creating mask for wall: x=${x}, y=${y}, width=${Math.round(wall.width)}, height=${Math.round(wall.height)}`);
-          
+
           return {
             input: {
               create: {
@@ -221,6 +221,7 @@ class PaintVisualizationService {
     return { resizedImagePath, resizedMaskPath, newWidth, newHeight };
   }
 
+
   // Step 3: Apply paint color using getimg.ai (PROPER 2025 APPROACH)
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName) {
     try {
@@ -236,6 +237,7 @@ class PaintVisualizationService {
 
       console.log('Applying paint color using getimg.ai API...');
 
+
       // Resize images first for API compatibility
       const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
 
@@ -248,26 +250,45 @@ class PaintVisualizationService {
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
       // PROPER 2025 getimg.ai payload based on your research
+      // const payload = {
+      //   model: 'stable-diffusion-xl-v1-0',
+      //   image: cleanImage,
+      //   mask_image: cleanMask,
+      //   prompt: `${colorName} painted wall, accurate color temperature, natural indoor lighting, realistic interior paint finish`,
+      //   negative_prompt: 'wrong color temperature, harsh lighting, color shifts, unnatural colors, flat lighting, oversaturated, cartoon, low quality, extra objects, new furniture, people, text',
+      //   strength: 0.75,
+      //   guidance: 7.8,
+      //   steps: 27,
+      //   width: newWidth,
+      //   height: newHeight,
+      //   output_format: 'jpeg',
+      //   response_format: 'url',
+      //   maskMargin: 48 // Add 48 pixels margin around mask to improve edge blending
+      // };
+
       const payload = {
         model: 'stable-diffusion-xl-v1-0',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `paint the wall in ${colorName} color, realistic interior lighting`,
-        negative_prompt: 'blurry, distorted, cartoon, low quality',
-        strength: 0.75,
-        guidance: 7.5,
-        steps: 25,
+        prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
+        negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
+        strength: 0.85,           // Higher strength for better color accuracy
+        guidance: 12.0,           // Much higher guidance for strict prompt following
+        steps: 35,                // More steps for better quality and accuracy
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
-        response_format: 'url'
+        response_format: 'url',
+        seed: 420
       };
+
+      console.log(`the ${colorName} has ${colorHex}`);
 
       console.log(`Sending to getimg.ai: ${payload.width}x${payload.height}`);
 
       const response = await getimgAPI.post('/stable-diffusion-xl/inpaint', payload);
       console.log('getimg.ai API request successful');
-      
+
       // Clean up temporary resized files
       try {
         if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
@@ -275,7 +296,7 @@ class PaintVisualizationService {
       } catch (cleanupError) {
         console.warn('Failed to clean up temp files:', cleanupError.message);
       }
-      
+
       // Handle URL response format
       if (response.data && response.data.url) {
         return {
@@ -302,6 +323,8 @@ class PaintVisualizationService {
       };
     }
   }
+
+  
 
   // Step 4: Generate color recommendations based on color theory
   generateColorRecommendations(baseColorHex, paintColorsDatabase) {
@@ -330,6 +353,7 @@ class PaintVisualizationService {
       return [];
     }
   }
+  
 
   hexToHsl(hex) {
     const r = parseInt(hex.substr(1, 2), 16) / 255;
