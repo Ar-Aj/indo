@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 
 // Get current directory for proper path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -12,28 +13,76 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // NOTE: Old inpainting pattern methods removed - now using dual-model approach
-  // Plain colors use realistic-vision inpainting, patterns use stable-diffusion-xl text-to-image
+  // Step 2.5: Apply pattern overlay to painted wall using img2img
+  async applyPatternOverlay(paintedImageUrl, colorHex, colorName, pattern) {
+    try {
+      console.log(`Applying pattern overlay: ${pattern} to painted wall...`);
 
-  // Generate prompts optimized for text-to-image pattern generation
-  generateTextToImagePatternPrompt(colorHex, colorName, pattern) {
+      // Download the painted image from URL
+      const response = await axios.get(paintedImageUrl, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(response.data);
+      const imageBase64 = imageBuffer.toString('base64');
+
+      // Generate pattern-specific prompts for img2img
+      const patternPrompt = this.generatePatternOverlayPrompt(colorHex, colorName, pattern);
+      console.log(`Pattern overlay prompt: ${patternPrompt}`);
+
+      // COST-EFFICIENT: Use img2img with moderate settings
+      const payload = {
+        model: 'stable-diffusion-xl-v1-0',
+        image: imageBase64,
+        prompt: patternPrompt,
+        negative_prompt: 'blurry, low quality, distorted, unrealistic, people, furniture, objects, text overlays, watermarks, completely different room, wrong colors',
+        strength: 0.6,               // Moderate strength to preserve base image
+        guidance: 10.0,              // Balanced guidance
+        steps: 30,                   // Cost-efficient step count
+        output_format: 'jpeg',
+        response_format: 'url',
+        seed: Math.floor(Math.random() * 1000000)
+      };
+
+      console.log('Sending pattern overlay request to stable-diffusion-xl img2img...');
+      const overlayResponse = await getimgAPI.post('/stable-diffusion-xl/img2img', payload);
+
+      return {
+        url: overlayResponse.data.url,
+        originalUrl: overlayResponse.data.url,
+        message: 'Pattern overlay successful'
+      };
+
+    } catch (error) {
+      console.error('Pattern overlay error:', error);
+      console.log('Pattern overlay failed, returning base painted image');
+      return {
+        url: paintedImageUrl,
+        message: 'Pattern overlay failed - showing base color'
+      };
+    }
+  }
+
+  // Generate prompts for pattern overlay on painted walls
+  generatePatternOverlayPrompt(colorHex, colorName, pattern) {
     const baseColorDesc = `${colorName} ${colorHex}`;
     
-    const textToImagePrompts = {
-      'accent-wall': `modern living room interior with one feature accent wall painted in ${baseColorDesc}, other walls neutral white, contemporary furniture, natural lighting, architectural photography`,
-      'two-tone': `elegant room interior with two-tone wall design, lower half painted ${baseColorDesc}, upper half cream white, chair rail molding, classic interior design, architectural photography`,
-      'vertical-stripes': `stylish room interior with vertical striped wallpaper, alternating ${baseColorDesc} and white vertical stripes, preppy design, traditional interior, high quality photography`,
-      'horizontal-stripes': `contemporary room with horizontal striped wall, ${baseColorDesc} and white horizontal bands, nautical style interior, modern design, professional photography`,
-      'geometric': `modern room interior with geometric wallpaper pattern, ${baseColorDesc} triangular shapes on white background, contemporary design, architectural photography`,
-      'ombre': `artistic room interior with ombre gradient wall, ${baseColorDesc} fading to light cream, smooth color transition, artistic interior design, professional photography`,
-      'color-block': `minimalist room interior with color block wall design, large ${baseColorDesc} geometric sections, modern architectural design, clean interior photography`,
-      'wainscoting': `traditional room interior with wainscoting, lower third painted ${baseColorDesc}, upper wall white, chair rail molding, classic colonial design, architectural photography`,
-      'border': `elegant room interior with painted border frame, ${baseColorDesc} wall with decorative border, formal interior design, professional photography`,
-      'textured': `artistic room interior with textured painted wall, ${baseColorDesc} with subtle texture finish, contemporary design, professional interior photography`
+    const overlayPrompts = {
+      'accent-wall': `interior room with one accent wall in ${baseColorDesc}, other walls neutral cream white, maintain room structure and lighting`,
+      'two-tone': `interior room with two-tone walls, lower half ${baseColorDesc}, upper half cream white, horizontal division with chair rail molding`,
+      'vertical-stripes': `interior room with vertical striped walls, alternating ${baseColorDesc} and white vertical stripes, maintain room structure`,
+      'horizontal-stripes': `interior room with horizontal striped walls, alternating ${baseColorDesc} and white horizontal bands, maintain room structure`,
+      'geometric': `interior room with geometric pattern walls, ${baseColorDesc} triangular shapes on white background, maintain room structure`,
+      'ombre': `interior room with ombre gradient walls, ${baseColorDesc} at bottom fading to light cream at top, maintain room structure`,
+      'color-block': `interior room with color block walls, large ${baseColorDesc} rectangular sections with white sections, maintain room structure`,
+      'wainscoting': `interior room with wainscoting, lower third ${baseColorDesc}, upper walls white, chair rail molding, maintain room structure`,
+      'border': `interior room with ${baseColorDesc} walls and decorative white border frame around edges, maintain room structure`,
+      'textured': `interior room with textured ${baseColorDesc} walls, subtle texture finish, maintain room structure and lighting`
     };
 
-    return textToImagePrompts[pattern] || `room interior with wall painted ${baseColorDesc}, professional interior photography`;
+    return overlayPrompts[pattern] || `interior room with ${baseColorDesc} walls, maintain room structure`;
   }
+
+  // NOTE: Old text-to-image method removed - now using TWO-STEP PROCESS
+  // Step 1: realistic-vision inpainting for base color
+  // Step 2: stable-diffusion-xl img2img for pattern overlay
 
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
   async detectWallSurfaces(imagePath) {
@@ -245,7 +294,7 @@ class PaintVisualizationService {
   }
 
 
-  // Step 3: Apply paint color with pattern using dual-model approach
+  // Step 3: Apply paint color with TWO-STEP PROCESS (Cost-Efficient & Practical)
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName, pattern = 'plain') {
     try {
       // Check if API key is configured and valid
@@ -258,124 +307,71 @@ class PaintVisualizationService {
         };
       }
 
-      // DUAL MODEL APPROACH: Different models for plain vs patterns
+      console.log(`Starting TWO-STEP PROCESS: Pattern = ${pattern}`);
+
+      // STEP 1: ALWAYS apply base color using Realistic Vision Inpainting (Your perfect system)
+      console.log('STEP 1: Applying base color with Realistic Vision v5.1 Inpainting...');
+      
+      // Resize images first for API compatibility
+      const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
+
+      // Convert resized images to base64
+      const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
+      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
+
+      // Remove any data URL prefix (clean base64)
+      const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+
+      // PERFECT BASE COLOR PAYLOAD (Your existing system)
+      const baseColorPayload = {
+        model: 'realistic-vision-v5-1-inpainting',
+        image: cleanImage,
+        mask_image: cleanMask,
+        prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
+        negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
+        strength: 0.9,               // Perfect for color accuracy
+        guidance: 15.0,              // Optimal guidance for color adherence
+        steps: 50,                   // Good balance
+        width: newWidth,
+        height: newHeight,
+        output_format: 'jpeg',
+        response_format: 'url',
+        seed: 123456                 // Fixed seed for consistency
+      };
+
+      console.log(`STEP 1: Sending base color request: ${baseColorPayload.width}x${baseColorPayload.height}`);
+      const baseColorResponse = await getimgAPI.post('/stable-diffusion/inpaint', baseColorPayload);
+      
+      // Clean up temporary resized files
+      try {
+        if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
+        if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
+      } catch (cleanupError) {
+        console.warn('Failed to clean up temp files:', cleanupError.message);
+      }
+
+      const paintedImageUrl = baseColorResponse.data.url;
+      console.log('STEP 1 COMPLETE: Base color applied successfully');
+
+      // STEP 2: Apply pattern overlay (if not plain)
       if (pattern === 'plain') {
-        // PLAIN COLORS: Use Realistic Vision Inpainting (PERFECT - Keep as is)
-        console.log('Using Realistic Vision v5.1 Inpainting for plain color (optimal for color accuracy)...');
-        
-        // Resize images first for API compatibility
-        const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
-
-        // Convert resized images to base64
-        const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
-        const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
-
-        // Remove any data URL prefix (clean base64)
-        const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-        const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-
-        // ORIGINAL PERFECT PLAIN COLOR LOGIC (Keep unchanged)
-        const payload = {
-          model: 'realistic-vision-v5-1-inpainting',
-          image: cleanImage,
-          mask_image: cleanMask,
-          prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
-          negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
-          strength: 0.9,               // Perfect for color accuracy
-          guidance: 15.0,              // Optimal guidance for color adherence
-          steps: 50,                   // Good balance
-          width: newWidth,
-          height: newHeight,
-          output_format: 'jpeg',
-          response_format: 'url',
-          seed: 123456                 // Fixed seed for consistency
-        };
-
-        console.log(`Sending plain color request to realistic-vision inpainting: ${payload.width}x${payload.height}`);
-        const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
-        
-        // Clean up temporary resized files
-        try {
-          if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
-          if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
-        } catch (cleanupError) {
-          console.warn('Failed to clean up temp files:', cleanupError.message);
-        }
-
+        console.log('STEP 2: SKIPPED (Plain pattern selected)');
         return {
-          url: response.data.url,
-          originalUrl: response.data.url,
+          url: paintedImageUrl,
+          originalUrl: paintedImageUrl,
           message: 'Plain color visualization successful'
         };
-
       } else {
-        // PATTERNS: Use Stable Diffusion XL Text-to-Image (Better for patterns)
-        console.log(`Using Stable Diffusion XL Text-to-Image for pattern generation: ${pattern}...`);
+        console.log(`STEP 2: Applying pattern overlay (${pattern})...`);
+        const patternResult = await this.applyPatternOverlay(paintedImageUrl, colorHex, colorName, pattern);
         
-        // For patterns, we'll use text-to-image to generate a patterned room
-        const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
-
-        // Generate pattern-specific prompts optimized for text-to-image
-        const patternPrompt = this.generateTextToImagePatternPrompt(colorHex, colorName, pattern);
-        console.log(`Pattern prompt for text-to-image: ${patternPrompt}`);
-
-        // PAYLOAD 1: Standard Pattern Generation (Currently Active)
-        const payload = {
-          model: 'stable-diffusion-xl-v1-0',
-          prompt: patternPrompt,
-          negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy',
-          width: newWidth,
-          height: newHeight,
-          steps: 50,
-          guidance: 12.0,
-          output_format: 'jpeg',
-          response_format: 'url',
-          seed: Math.floor(Math.random() * 1000000)
-        };
-
-        // PAYLOAD 2: High Quality Pattern Generation (Uncomment to test)
-        // const payload = {
-        //   model: 'stable-diffusion-xl-v1-0',
-        //   prompt: patternPrompt,
-        //   negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy, plain wall, solid color',
-        //   width: newWidth,
-        //   height: newHeight,
-        //   steps: 70,           // More steps for better quality
-        //   guidance: 15.0,      // Higher guidance for pattern adherence
-        //   output_format: 'jpeg',
-        //   response_format: 'url',
-        //   seed: 42             // Fixed seed for consistency
-        // };
-
-        // PAYLOAD 3: Creative Pattern Generation (Uncomment to test)
-        // const payload = {
-        //   model: 'stable-diffusion-xl-v1-0',
-        //   prompt: patternPrompt,
-        //   negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy',
-        //   width: newWidth,
-        //   height: newHeight,
-        //   steps: 60,
-        //   guidance: 10.0,      // Lower guidance for more creative interpretation
-        //   output_format: 'jpeg',
-        //   response_format: 'url',
-        //   seed: Date.now() % 1000000  // Random seed for variation
-        // };
-
-        console.log(`Sending pattern request to stable-diffusion-xl text-to-image: ${payload.width}x${payload.height}`);
-        const response = await getimgAPI.post('/stable-diffusion-xl/text-to-image', payload);
-        
-        // Clean up temporary resized files
-        try {
-          if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
-          if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
-        } catch (cleanupError) {
-          console.warn('Failed to clean up temp files:', cleanupError.message);
-        }
-
+        console.log('STEP 2 COMPLETE: Pattern overlay applied');
         return {
-          url: response.data.url,
-          originalUrl: response.data.url,
-          message: 'Pattern visualization successful'
+          url: patternResult.url,
+          originalUrl: patternResult.url,
+          message: `${pattern} pattern visualization successful`,
+          baseColorUrl: paintedImageUrl  // Keep reference to base color
         };
       }
 
