@@ -12,77 +12,27 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern-specific prompts optimized for inpainting model capabilities
-  generatePatternPrompt(colorHex, colorName, pattern) {
-    const baseColorDesc = `${colorName} paint color ${colorHex}`;
-    
-    const patternPrompts = {
-      'plain': `wall painted with exact ${baseColorDesc}, solid uniform flat color, matte finish, precise color match, no patterns or texture`,
-      
-      'accent-wall': `dramatic accent wall painted in bold ${baseColorDesc}, feature wall design, one wall stands out from neutral surroundings, focal point interior design`,
-      
-      'two-tone': `two tone wall with lower section painted ${baseColorDesc} and upper section cream white, chair rail molding dividing colors, traditional wainscoting design`,
-      
-      'vertical-stripes': `wall with bold vertical striped wallpaper pattern, alternating ${baseColorDesc} and white vertical stripes, each stripe 6 inches wide, crisp straight lines, preppy interior design`,
-      
-      'horizontal-stripes': `wall with horizontal striped wallpaper, alternating bands of ${baseColorDesc} and cream white, each band 8 inches tall, nautical style interior design`,
-      
-      'geometric': `wall with modern geometric wallpaper pattern, ${baseColorDesc} triangular shapes on white background, contemporary abstract wall design, architectural pattern`,
-      
-      'ombre': `wall with gradient ombre paint effect, ${baseColorDesc} at bottom fading to light cream at top, smooth color transition, artistic paint technique`,
-      
-      'color-block': `wall with color blocking design, large rectangular section painted ${baseColorDesc}, modern minimalist wall treatment, architectural color blocking`,
-      
-      'wainscoting': `traditional wainscoting wall with lower third painted ${baseColorDesc}, upper wall white, white chair rail molding, classic colonial interior design`,
-      
-      'border': `wall painted ${baseColorDesc} with decorative painted border frame around edges, elegant border design, formal interior styling`,
-      
-      'textured': `wall with textured paint finish in ${baseColorDesc}, subtle sponge painting technique, dimensional paint texture, artistic wall treatment`
-    };
+  // NOTE: Old inpainting pattern methods removed - now using dual-model approach
+  // Plain colors use realistic-vision inpainting, patterns use stable-diffusion-xl text-to-image
 
-    return patternPrompts[pattern] || patternPrompts['plain'];
-  }
-
-  // Generate pattern-specific negative prompts optimized for better pattern visibility
-  generatePatternNegativePrompt(pattern) {
-    const baseNegative = 'blurry, low quality, artifacts, distorted, unrealistic';
-    
-    const patternNegatives = {
-      'plain': `${baseNegative}, patterns, stripes, texture, designs, decorations, wallpaper, uneven coverage`,
-      'accent-wall': `${baseNegative}, uniform walls, no contrast, all walls same color, bland design`,
-      'two-tone': `${baseNegative}, single color wall, no division, missing chair rail, uniform paint`,
-      'vertical-stripes': `${baseNegative}, horizontal stripes, diagonal lines, curved stripes, solid color wall, no pattern`,
-      'horizontal-stripes': `${baseNegative}, vertical stripes, diagonal bands, curved lines, solid color, no bands`,
-      'geometric': `${baseNegative}, plain wall, no patterns, curved shapes, organic patterns, solid color`,
-      'ombre': `${baseNegative}, solid color, sharp edges, no gradient, uniform color, flat paint`,
-      'color-block': `${baseNegative}, solid color wall, no geometric shapes, uniform paint, no blocking`,
-      'wainscoting': `${baseNegative}, solid color wall, no molding, no division, modern minimalist`,
-      'border': `${baseNegative}, plain wall, no border, no frame, solid color, minimalist`,
-      'textured': `${baseNegative}, smooth wall, flat paint, glossy finish, no texture, plain surface`
-    };
-
-    return patternNegatives[pattern] || patternNegatives['plain'];
-  }
-
-  // Check if pattern requires special handling (most complex patterns)
-  requiresSpecialHandling(pattern) {
-    const complexPatterns = ['vertical-stripes', 'horizontal-stripes', 'geometric', 'color-block'];
-    return complexPatterns.includes(pattern);
-  }
-
-  // Generate alternative prompt strategy for complex patterns using wallpaper terminology
-  generateAlternativePatternPrompt(colorHex, colorName, pattern) {
+  // Generate prompts optimized for text-to-image pattern generation
+  generateTextToImagePatternPrompt(colorHex, colorName, pattern) {
     const baseColorDesc = `${colorName} ${colorHex}`;
     
-    // Use wallpaper/existing design terminology which AI models understand better
-    const alternativePrompts = {
-      'vertical-stripes': `room interior with vertical striped wallpaper covering the wall, bold ${baseColorDesc} and crisp white alternating vertical stripes, each stripe exactly 4 inches wide, preppy traditional wallpaper design, classic striped wall treatment`,
-      'horizontal-stripes': `room interior with horizontal striped wallpaper on wall, ${baseColorDesc} and white horizontal bands, each band 6 inches tall, nautical style wallpaper, banded wall covering design`,
-      'geometric': `room interior with geometric patterned wallpaper on wall, repeating ${baseColorDesc} triangle motifs on white background, modern abstract wallpaper design, contemporary geometric wall covering`,
-      'color-block': `room interior with color blocked wallpaper design, large rectangular ${baseColorDesc} sections alternating with white sections, modern minimalist wallpaper, architectural color blocking wall treatment`
+    const textToImagePrompts = {
+      'accent-wall': `modern living room interior with one feature accent wall painted in ${baseColorDesc}, other walls neutral white, contemporary furniture, natural lighting, architectural photography`,
+      'two-tone': `elegant room interior with two-tone wall design, lower half painted ${baseColorDesc}, upper half cream white, chair rail molding, classic interior design, architectural photography`,
+      'vertical-stripes': `stylish room interior with vertical striped wallpaper, alternating ${baseColorDesc} and white vertical stripes, preppy design, traditional interior, high quality photography`,
+      'horizontal-stripes': `contemporary room with horizontal striped wall, ${baseColorDesc} and white horizontal bands, nautical style interior, modern design, professional photography`,
+      'geometric': `modern room interior with geometric wallpaper pattern, ${baseColorDesc} triangular shapes on white background, contemporary design, architectural photography`,
+      'ombre': `artistic room interior with ombre gradient wall, ${baseColorDesc} fading to light cream, smooth color transition, artistic interior design, professional photography`,
+      'color-block': `minimalist room interior with color block wall design, large ${baseColorDesc} geometric sections, modern architectural design, clean interior photography`,
+      'wainscoting': `traditional room interior with wainscoting, lower third painted ${baseColorDesc}, upper wall white, chair rail molding, classic colonial design, architectural photography`,
+      'border': `elegant room interior with painted border frame, ${baseColorDesc} wall with decorative border, formal interior design, professional photography`,
+      'textured': `artistic room interior with textured painted wall, ${baseColorDesc} with subtle texture finish, contemporary design, professional interior photography`
     };
 
-    return alternativePrompts[pattern] || this.generatePatternPrompt(colorHex, colorName, pattern);
+    return textToImagePrompts[pattern] || `room interior with wall painted ${baseColorDesc}, professional interior photography`;
   }
 
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
@@ -295,7 +245,7 @@ class PaintVisualizationService {
   }
 
 
-  // Step 3: Apply paint color with pattern using getimg.ai
+  // Step 3: Apply paint color with pattern using dual-model approach
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName, pattern = 'plain') {
     try {
       // Check if API key is configured and valid
@@ -308,151 +258,125 @@ class PaintVisualizationService {
         };
       }
 
-      console.log('Applying paint color using getimg.ai Realistic Vision v5.1 Inpainting model...');
-
-
-      // Resize images first for API compatibility
-      const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
-
-      // Convert resized images to base64
-      const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
-      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
-
-      // Remove any data URL prefix (clean base64)
-      const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-
-      // Generate pattern-specific prompts with special handling for complex patterns
-      const useAlternative = this.requiresSpecialHandling(pattern);
-      const patternPrompt = useAlternative 
-        ? this.generateAlternativePatternPrompt(colorHex, colorName, pattern)
-        : this.generatePatternPrompt(colorHex, colorName, pattern);
-      const patternNegativePrompt = this.generatePatternNegativePrompt(pattern);
-
-      console.log(`Using pattern: ${pattern} (${useAlternative ? 'Alternative' : 'Standard'} approach)`);
-      console.log(`Pattern prompt: ${patternPrompt}`);
-
-      // Adjust parameters based on pattern complexity and type
-      const isComplexPattern = !['plain', 'accent-wall', 'two-tone', 'textured'].includes(pattern);
-      const isStripedPattern = ['vertical-stripes', 'horizontal-stripes'].includes(pattern);
-      
-      // Ultra-aggressive parameters for patterns to ensure visibility
-      let patternStrength, patternGuidance, patternSteps;
-      
+      // DUAL MODEL APPROACH: Different models for plain vs patterns
       if (pattern === 'plain') {
-        // Optimized for color accuracy
-        patternStrength = 0.9;
-        patternGuidance = 15.0;
-        patternSteps = 50;
-      } else if (isStripedPattern) {
-        // Maximum parameters for striped patterns (hardest to generate)
-        patternStrength = 0.98;
-        patternGuidance = 25.0;
-        patternSteps = 80;
-      } else if (isComplexPattern) {
-        // High parameters for geometric and complex patterns
-        patternStrength = 0.95;
-        patternGuidance = 22.0;
-        patternSteps = 70;
-      } else {
-        // Moderate parameters for simple patterns
-        patternStrength = 0.92;
-        patternGuidance = 18.0;
-        patternSteps = 60;
-      }
+        // PLAIN COLORS: Use Realistic Vision Inpainting (PERFECT - Keep as is)
+        console.log('Using Realistic Vision v5.1 Inpainting for plain color (optimal for color accuracy)...');
+        
+        // Resize images first for API compatibility
+        const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
 
-      console.log(`Pattern: ${pattern}, Complexity: ${isComplexPattern ? 'Complex' : 'Simple'}, Striped: ${isStripedPattern}`);
-      console.log(`Using ultra-aggressive parameters - Strength: ${patternStrength}, Guidance: ${patternGuidance}, Steps: ${patternSteps}`);
-      
-      // Determine final prompts based on pattern complexity
-      let finalPrompt = patternPrompt;
-      let finalNegativePrompt = patternNegativePrompt;
-      
-      if (this.requiresSpecialHandling(pattern)) {
-        finalPrompt = this.generateAlternativePatternPrompt(colorHex, colorName, pattern);
-        finalNegativePrompt = `${patternNegativePrompt}, plain wall, solid color, no wallpaper, no pattern`;
-        console.log(`Complex pattern detected, using alternative approach`);
-      }
+        // Convert resized images to base64
+        const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
+        const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
 
-      console.log(`Final prompt: ${finalPrompt}`);
-      console.log(`Final negative prompt: ${finalNegativePrompt}`);
+        // Remove any data URL prefix (clean base64)
+        const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+        const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // PAYLOAD OPTION 1: Ultra-Aggressive Pattern Generation (RECOMMENDED - Currently Active)
-      const payload = {
-        model: 'realistic-vision-v5-1-inpainting',
-        image: cleanImage,
-        mask_image: cleanMask,
-        prompt: finalPrompt,
-        negative_prompt: finalNegativePrompt,
-        strength: patternStrength,      // Ultra-high strength for pattern visibility
-        guidance: patternGuidance,      // Maximum guidance for pattern adherence
-        steps: patternSteps,            // High steps for pattern quality
-        width: newWidth,
-        height: newHeight,
-        output_format: 'jpeg',
-        response_format: 'url',
-        seed: pattern === 'plain' ? 123456 : Math.floor(Math.random() * 1000)  // Random seeds for pattern variation
-      };
+        // ORIGINAL PERFECT PLAIN COLOR LOGIC (Keep unchanged)
+        const payload = {
+          model: 'realistic-vision-v5-1-inpainting',
+          image: cleanImage,
+          mask_image: cleanMask,
+          prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
+          negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
+          strength: 0.9,               // Perfect for color accuracy
+          guidance: 15.0,              // Optimal guidance for color adherence
+          steps: 50,                   // Good balance
+          width: newWidth,
+          height: newHeight,
+          output_format: 'jpeg',
+          response_format: 'url',
+          seed: 123456                 // Fixed seed for consistency
+        };
 
-      // PAYLOAD OPTION 2: Extreme Color Precision with Pattern (Uncomment to test)
-      // const payload = {
-      //   model: 'realistic-vision-v5-1-inpainting',
-      //   image: cleanImage,
-      //   mask_image: cleanMask,
-      //   prompt: patternPrompt.replace('precise color match', 'exact hex color precision, no color deviation'),
-      //   negative_prompt: `${patternNegativePrompt}, incorrect color, wrong hue, saturation changes, brightness changes, color mixing`,
-      //   strength: 0.95,              // Maximum strength for ultimate color control
-      //   guidance: 18.0,              // Extreme guidance for exact matching
-      //   steps: 60,                   // Maximum steps for highest precision
-      //   width: newWidth,
-      //   height: newHeight,
-      //   output_format: 'jpeg',
-      //   response_format: 'url',
-      //   seed: 42                     // Fixed seed for reproducibility
-      // };
+        console.log(`Sending plain color request to realistic-vision inpainting: ${payload.width}x${payload.height}`);
+        const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
+        
+        // Clean up temporary resized files
+        try {
+          if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
+          if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
+        } catch (cleanupError) {
+          console.warn('Failed to clean up temp files:', cleanupError.message);
+        }
 
-      // PAYLOAD OPTION 3: Balanced Pattern with Natural Look (Uncomment to test)
-      // const payload = {
-      //   model: 'realistic-vision-v5-1-inpainting',
-      //   image: cleanImage,
-      //   mask_image: cleanMask,
-      //   prompt: patternPrompt.replace('precise color match', 'natural color representation, realistic lighting'),
-      //   negative_prompt: `${patternNegativePrompt}, artificial look, overstyled, unrealistic patterns`,
-      //   strength: 0.8,               // Balanced strength for natural look
-      //   guidance: 12.0,              // Strong guidance for pattern accuracy
-      //   steps: 45,                   // Good balance of quality and speed
-      //   width: newWidth,
-      //   height: newHeight,
-      //   output_format: 'jpeg',
-      //   response_format: 'url',
-      //   seed: Date.now() % 1000000   // Variable seed for natural variation
-      // };
-
-      console.log(`the ${colorName} has ${colorHex}`);
-
-      console.log(`Sending to getimg.ai: ${payload.width}x${payload.height}`);
-
-      const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
-      console.log('getimg.ai API request successful');
-
-      // Clean up temporary resized files
-      try {
-        if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
-        if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
-      } catch (cleanupError) {
-        console.warn('Failed to clean up temp files:', cleanupError.message);
-      }
-
-      // Handle URL response format
-      if (response.data && response.data.url) {
         return {
           url: response.data.url,
           originalUrl: response.data.url,
-          message: 'Paint visualization successful'
+          message: 'Plain color visualization successful'
         };
+
       } else {
-        console.log('Response data:', response.data);
-        throw new Error('No URL in response');
+        // PATTERNS: Use Stable Diffusion XL Text-to-Image (Better for patterns)
+        console.log(`Using Stable Diffusion XL Text-to-Image for pattern generation: ${pattern}...`);
+        
+        // For patterns, we'll use text-to-image to generate a patterned room
+        const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
+
+        // Generate pattern-specific prompts optimized for text-to-image
+        const patternPrompt = this.generateTextToImagePatternPrompt(colorHex, colorName, pattern);
+        console.log(`Pattern prompt for text-to-image: ${patternPrompt}`);
+
+        // PAYLOAD 1: Standard Pattern Generation (Currently Active)
+        const payload = {
+          model: 'stable-diffusion-xl-v1-0',
+          prompt: patternPrompt,
+          negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy',
+          width: newWidth,
+          height: newHeight,
+          steps: 50,
+          guidance: 12.0,
+          output_format: 'jpeg',
+          response_format: 'url',
+          seed: Math.floor(Math.random() * 1000000)
+        };
+
+        // PAYLOAD 2: High Quality Pattern Generation (Uncomment to test)
+        // const payload = {
+        //   model: 'stable-diffusion-xl-v1-0',
+        //   prompt: patternPrompt,
+        //   negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy, plain wall, solid color',
+        //   width: newWidth,
+        //   height: newHeight,
+        //   steps: 70,           // More steps for better quality
+        //   guidance: 15.0,      // Higher guidance for pattern adherence
+        //   output_format: 'jpeg',
+        //   response_format: 'url',
+        //   seed: 42             // Fixed seed for consistency
+        // };
+
+        // PAYLOAD 3: Creative Pattern Generation (Uncomment to test)
+        // const payload = {
+        //   model: 'stable-diffusion-xl-v1-0',
+        //   prompt: patternPrompt,
+        //   negative_prompt: 'blurry, low quality, distorted, unrealistic, cartoon, people, furniture, objects, text overlays, watermarks, bad anatomy',
+        //   width: newWidth,
+        //   height: newHeight,
+        //   steps: 60,
+        //   guidance: 10.0,      // Lower guidance for more creative interpretation
+        //   output_format: 'jpeg',
+        //   response_format: 'url',
+        //   seed: Date.now() % 1000000  // Random seed for variation
+        // };
+
+        console.log(`Sending pattern request to stable-diffusion-xl text-to-image: ${payload.width}x${payload.height}`);
+        const response = await getimgAPI.post('/stable-diffusion-xl/text-to-image', payload);
+        
+        // Clean up temporary resized files
+        try {
+          if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
+          if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
+        } catch (cleanupError) {
+          console.warn('Failed to clean up temp files:', cleanupError.message);
+        }
+
+        return {
+          url: response.data.url,
+          originalUrl: response.data.url,
+          message: 'Pattern visualization successful'
+        };
       }
 
     } catch (error) {
