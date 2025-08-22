@@ -13,51 +13,35 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Step 2.5: Apply pattern overlay to painted wall using img2img
-  async applyPatternOverlay(paintedImageUrl, colorHex, colorName, pattern) {
-    try {
-      console.log(`Applying pattern overlay: ${pattern} to painted wall...`);
+  // Generate enhanced prompts that work better with inpainting for patterns
+  generatePatternInpaintingPrompt(colorHex, colorName, pattern) {
+    const baseColorDesc = `${colorName} ${colorHex}`;
+    
+    const patternPrompts = {
+      'plain': `wall painted with exact ${baseColorDesc}, solid uniform flat color, matte finish, precise color match, no patterns or texture`,
+      
+      'accent-wall': `room interior with one feature accent wall painted ${baseColorDesc}, other walls neutral cream, focal wall design, realistic lighting`,
+      
+      'two-tone': `room interior wall with two-tone paint design, lower section ${baseColorDesc}, upper section white, chair rail molding, traditional style`,
+      
+      'vertical-stripes': `wall painted with ${baseColorDesc} and white vertical stripes pattern, alternating stripes, each stripe 4 inches wide, classic striped design`,
+      
+      'horizontal-stripes': `wall painted with ${baseColorDesc} and white horizontal stripes, alternating horizontal bands, nautical stripe pattern`,
+      
+      'geometric': `wall with geometric pattern using ${baseColorDesc} and white, triangular geometric design, modern pattern`,
+      
+      'ombre': `wall with ombre gradient effect, ${baseColorDesc} at bottom fading to white at top, smooth gradient transition`,
+      
+      'color-block': `wall with color block pattern, large ${baseColorDesc} rectangular sections alternating with white blocks`,
+      
+      'wainscoting': `wall with wainscoting design, lower third painted ${baseColorDesc}, upper wall white, chair rail molding`,
+      
+      'border': `wall painted ${baseColorDesc} with white decorative border frame around the edges`,
+      
+      'textured': `wall painted ${baseColorDesc} with subtle textured finish, sponge paint technique, textured surface`
+    };
 
-      // Download the painted image from URL
-      const response = await axios.get(paintedImageUrl, { responseType: 'arraybuffer' });
-      const imageBuffer = Buffer.from(response.data);
-      const imageBase64 = imageBuffer.toString('base64');
-
-      // Generate pattern-specific prompts for img2img
-      const patternPrompt = this.generatePatternOverlayPrompt(colorHex, colorName, pattern);
-      console.log(`Pattern overlay prompt: ${patternPrompt}`);
-
-      // COST-EFFICIENT: Use img2img with moderate settings
-      const payload = {
-        model: 'stable-diffusion-xl-v1-0',
-        image: imageBase64,
-        prompt: patternPrompt,
-        negative_prompt: 'blurry, low quality, distorted, unrealistic, people, furniture, objects, text overlays, watermarks, completely different room, wrong colors',
-        strength: 0.6,               // Moderate strength to preserve base image
-        guidance: 10.0,              // Balanced guidance
-        steps: 30,                   // Cost-efficient step count
-        output_format: 'jpeg',
-        response_format: 'url',
-        seed: Math.floor(Math.random() * 1000000)
-      };
-
-      console.log('Sending pattern overlay request to stable-diffusion-xl img2img...');
-      const overlayResponse = await getimgAPI.post('/stable-diffusion-xl/img2img', payload);
-
-      return {
-        url: overlayResponse.data.url,
-        originalUrl: overlayResponse.data.url,
-        message: 'Pattern overlay successful'
-      };
-
-    } catch (error) {
-      console.error('Pattern overlay error:', error);
-      console.log('Pattern overlay failed, returning base painted image');
-      return {
-        url: paintedImageUrl,
-        message: 'Pattern overlay failed - showing base color'
-      };
-    }
+    return patternPrompts[pattern] || patternPrompts['plain'];
   }
 
   // Generate prompts for pattern overlay on painted walls
