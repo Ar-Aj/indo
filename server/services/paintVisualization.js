@@ -254,53 +254,50 @@ class PaintVisualizationService {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `wall surface painted with exact ${colorHex} paint color, ${colorName} paint, solid uniform color coverage, flat matte finish, accurate color temperature, precise color matching`,
-        negative_prompt: 'color variations, color gradients, wrong color, off-color, color shift, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts',
-        strength: 0.85,              // Higher strength for better color adherence
-        cfg_scale: 12.0,             // High CFG for strict prompt following
-        steps: 40,                   // More steps for quality
-        scheduler: 'DPM++ 2M Karras', // Best scheduler for realistic results
+        prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
+        negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
+        strength: 0.9,               // Very high strength for color control
+        guidance: 15.0,              // Maximum guidance for strict color adherence
+        steps: 50,                   // High steps for precision
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
         response_format: 'url',
-        seed: Math.floor(Math.random() * 1000000) // Random seed for variation
+        seed: 123456                 // Fixed seed for consistency
       };
 
-      // PAYLOAD OPTION 2: Maximum Color Control (Uncomment to test)
+      // PAYLOAD OPTION 2: Extreme Color Precision (Uncomment to test)
       // const payload = {
       //   model: 'realistic-vision-v5-1-inpainting',
       //   image: cleanImage,
       //   mask_image: cleanMask,
-      //   prompt: `${colorName} ${colorHex} paint applied to wall, exact color match, solid paint coverage, no color variation, uniform paint application, realistic interior wall`,
-      //   negative_prompt: 'wrong hue, incorrect color, color deviation, saturation changes, brightness changes, color mixing, gradient, texture, shine, gloss, reflections, shadows, lighting effects on color',
-      //   strength: 0.9,               // Maximum strength for color control
-      //   cfg_scale: 15.0,             // Very high CFG for exact color matching
-      //   steps: 50,                   // Maximum steps for precision
-      //   scheduler: 'Euler a',        // Alternative scheduler for color accuracy
+      //   prompt: `${colorHex} paint color on wall, exact hex color ${colorHex}, ${colorName}, solid flat paint, uniform color application, no color deviation, precise color reproduction`,
+      //   negative_prompt: 'incorrect color, wrong hue, saturation changes, brightness changes, color mixing, color variations, gradient, shine, gloss, reflections, shadows affecting color, lighting effects on paint color, color bleeding, texture, patterns',
+      //   strength: 0.95,              // Maximum strength for ultimate color control
+      //   guidance: 18.0,              // Extreme guidance for exact matching
+      //   steps: 60,                   // Maximum steps for highest precision
       //   width: newWidth,
       //   height: newHeight,
       //   output_format: 'jpeg',
       //   response_format: 'url',
-      //   seed: 42                     // Fixed seed for consistency
+      //   seed: 42                     // Fixed seed for reproducibility
       // };
 
-      // PAYLOAD OPTION 3: Balanced Realism with Color Focus (Uncomment to test)
+      // PAYLOAD OPTION 3: Color-Focused with Natural Blending (Uncomment to test)
       // const payload = {
       //   model: 'realistic-vision-v5-1-inpainting',
       //   image: cleanImage,
       //   mask_image: cleanMask,
-      //   prompt: `interior wall painted in precise ${colorName} color ${colorHex}, professional paint job, smooth even finish, accurate color representation, realistic lighting, clean wall surface`,
-      //   negative_prompt: 'color inaccuracy, wrong shade, color distortion, uneven paint, paint drips, brush marks, texture variations, glossy surface, color bleeding, oversaturation, undersaturation, color shift',
-      //   strength: 0.8,               // Balanced strength
-      //   cfg_scale: 10.0,             // Moderate CFG for balance
-      //   steps: 35,                   // Good balance of quality and speed
-      //   scheduler: 'DPM++ SDE Karras', // Excellent for realistic results
+      //   prompt: `interior wall with ${colorName} paint color ${colorHex}, accurate color representation, smooth paint finish, natural indoor lighting, realistic room setting, proper color temperature`,
+      //   negative_prompt: 'color inaccuracy, wrong color tone, color distortion, uneven paint coverage, paint artifacts, oversaturation, undersaturation, color shift, wrong shade, blurry, low quality',
+      //   strength: 0.85,              // High strength with some flexibility
+      //   guidance: 12.0,              // Strong guidance for color accuracy
+      //   steps: 45,                   // Good balance of quality and speed
       //   width: newWidth,
       //   height: newHeight,
       //   output_format: 'jpeg',
       //   response_format: 'url',
-      //   seed: Date.now() % 1000000   // Time-based seed for variation
+      //   seed: Date.now() % 1000000   // Variable seed for natural variation
       // };
 
       console.log(`the ${colorName} has ${colorHex}`);
