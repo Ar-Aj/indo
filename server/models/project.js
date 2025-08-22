@@ -6,6 +6,7 @@ const projectSchema = new mongoose.Schema({
   originalImageUrl: { type: String, required: true },
   processedImageUrl: { type: String },
   selectedColors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Color' }],
+  pattern: { type: String, default: 'plain' }, // Selected paint pattern
   maskData: { type: String }, // base64 mask data
   detectionResults: { type: Object }, // Roboflow detection results
   createdAt: { type: Date, default: Date.now }

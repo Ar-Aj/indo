@@ -12,6 +12,58 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
+  // Generate pattern-specific prompts for different paint patterns
+  generatePatternPrompt(colorHex, colorName, pattern) {
+    const baseColorDesc = `${colorName} color ${colorHex}`;
+    
+    const patternPrompts = {
+      'plain': `wall painted with exact ${baseColorDesc}, solid uniform flat color, matte finish, precise color match, no patterns or texture`,
+      
+      'accent-wall': `feature accent wall painted in ${baseColorDesc}, one wall highlighted, other walls neutral beige, modern interior design, focal point wall`,
+      
+      'two-tone': `two-tone wall design with ${baseColorDesc} on lower half, neutral white on upper half, chair rail divider, classic interior style`,
+      
+      'vertical-stripes': `vertical striped wall pattern with alternating ${baseColorDesc} and neutral white stripes, equal width stripes, clean lines, modern striped design`,
+      
+      'horizontal-stripes': `horizontal striped wall with ${baseColorDesc} and white stripes, contemporary banded design, equal stripe width, modern interior`,
+      
+      'geometric': `geometric wall pattern with ${baseColorDesc} triangular shapes, modern geometric design, clean angular patterns, contemporary interior`,
+      
+      'ombre': `ombre gradient wall effect with ${baseColorDesc} fading to lighter shade, smooth color transition, gradient paint technique, artistic wall finish`,
+      
+      'color-block': `color block wall design with bold ${baseColorDesc} geometric sections, modern abstract pattern, clean geometric shapes`,
+      
+      'wainscoting': `wainscoting style with ${baseColorDesc} on lower third, neutral white upper wall, traditional chair rail molding, classic interior design`,
+      
+      'border': `wall painted with ${baseColorDesc} and decorative border frame, painted border accent, elegant framed wall design`,
+      
+      'textured': `textured wall finish with ${baseColorDesc}, subtle sponge texture effect, artistic textured paint application, dimensional wall surface`
+    };
+
+    return patternPrompts[pattern] || patternPrompts['plain'];
+  }
+
+  // Generate pattern-specific negative prompts
+  generatePatternNegativePrompt(pattern) {
+    const baseNegative = 'wrong color, color shift, blurry, low quality, artifacts, oversaturated, undersaturated';
+    
+    const patternNegatives = {
+      'plain': `${baseNegative}, patterns, stripes, texture, designs, decorations, uneven coverage`,
+      'accent-wall': `${baseNegative}, all walls same color, no focal wall, uniform color throughout`,
+      'two-tone': `${baseNegative}, single color, no division, uneven split, crooked lines`,
+      'vertical-stripes': `${baseNegative}, horizontal lines, diagonal stripes, uneven stripes, wavy lines`,
+      'horizontal-stripes': `${baseNegative}, vertical lines, diagonal stripes, uneven bands, curved lines`,
+      'geometric': `${baseNegative}, curved shapes, organic patterns, random shapes, messy patterns`,
+      'ombre': `${baseNegative}, sharp color changes, distinct bands, uniform color, no gradient`,
+      'color-block': `${baseNegative}, curved shapes, gradients, soft edges, organic patterns`,
+      'wainscoting': `${baseNegative}, uniform color, no division, missing chair rail, wrong proportions`,
+      'border': `${baseNegative}, no border, uniform color, missing frame, incomplete border`,
+      'textured': `${baseNegative}, smooth surface, flat finish, no texture, glossy finish`
+    };
+
+    return patternNegatives[pattern] || patternNegatives['plain'];
+  }
+
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
   async detectWallSurfaces(imagePath) {
     try {
@@ -222,8 +274,8 @@ class PaintVisualizationService {
   }
 
 
-  // Step 3: Apply paint color using getimg.ai (PROPER 2025 APPROACH)
-  async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName) {
+  // Step 3: Apply paint color with pattern using getimg.ai
+  async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName, pattern = 'plain') {
     try {
       // Check if API key is configured and valid
       const apiKey = process.env.GETIMG_API_KEY;
@@ -249,13 +301,20 @@ class PaintVisualizationService {
       const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // PAYLOAD OPTION 1: High Color Fidelity (RECOMMENDED - Currently Active)
+      // Generate pattern-specific prompts
+      const patternPrompt = this.generatePatternPrompt(colorHex, colorName, pattern);
+      const patternNegativePrompt = this.generatePatternNegativePrompt(pattern);
+
+      console.log(`Using pattern: ${pattern}`);
+      console.log(`Pattern prompt: ${patternPrompt}`);
+
+      // PAYLOAD OPTION 1: High Color Fidelity with Pattern Support (RECOMMENDED - Currently Active)
       const payload = {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
-        negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
+        prompt: patternPrompt,
+        negative_prompt: patternNegativePrompt,
         strength: 0.9,               // Very high strength for color control
         guidance: 15.0,              // Maximum guidance for strict color adherence
         steps: 50,                   // High steps for precision
@@ -266,13 +325,13 @@ class PaintVisualizationService {
         seed: 123456                 // Fixed seed for consistency
       };
 
-      // PAYLOAD OPTION 2: Extreme Color Precision (Uncomment to test)
+      // PAYLOAD OPTION 2: Extreme Color Precision with Pattern (Uncomment to test)
       // const payload = {
       //   model: 'realistic-vision-v5-1-inpainting',
       //   image: cleanImage,
       //   mask_image: cleanMask,
-      //   prompt: `${colorHex} paint color on wall, exact hex color ${colorHex}, ${colorName}, solid flat paint, uniform color application, no color deviation, precise color reproduction`,
-      //   negative_prompt: 'incorrect color, wrong hue, saturation changes, brightness changes, color mixing, color variations, gradient, shine, gloss, reflections, shadows affecting color, lighting effects on paint color, color bleeding, texture, patterns',
+      //   prompt: patternPrompt.replace('precise color match', 'exact hex color precision, no color deviation'),
+      //   negative_prompt: `${patternNegativePrompt}, incorrect color, wrong hue, saturation changes, brightness changes, color mixing`,
       //   strength: 0.95,              // Maximum strength for ultimate color control
       //   guidance: 18.0,              // Extreme guidance for exact matching
       //   steps: 60,                   // Maximum steps for highest precision
@@ -283,15 +342,15 @@ class PaintVisualizationService {
       //   seed: 42                     // Fixed seed for reproducibility
       // };
 
-      // PAYLOAD OPTION 3: Color-Focused with Natural Blending (Uncomment to test)
+      // PAYLOAD OPTION 3: Balanced Pattern with Natural Look (Uncomment to test)
       // const payload = {
       //   model: 'realistic-vision-v5-1-inpainting',
       //   image: cleanImage,
       //   mask_image: cleanMask,
-      //   prompt: `interior wall with ${colorName} paint color ${colorHex}, accurate color representation, smooth paint finish, natural indoor lighting, realistic room setting, proper color temperature`,
-      //   negative_prompt: 'color inaccuracy, wrong color tone, color distortion, uneven paint coverage, paint artifacts, oversaturation, undersaturation, color shift, wrong shade, blurry, low quality',
-      //   strength: 0.85,              // High strength with some flexibility
-      //   guidance: 12.0,              // Strong guidance for color accuracy
+      //   prompt: patternPrompt.replace('precise color match', 'natural color representation, realistic lighting'),
+      //   negative_prompt: `${patternNegativePrompt}, artificial look, overstyled, unrealistic patterns`,
+      //   strength: 0.8,               // Balanced strength for natural look
+      //   guidance: 12.0,              // Strong guidance for pattern accuracy
       //   steps: 45,                   // Good balance of quality and speed
       //   width: newWidth,
       //   height: newHeight,

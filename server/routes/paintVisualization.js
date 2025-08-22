@@ -45,7 +45,7 @@ const upload = multer({
 // PROTECTED: Process paint visualization
 router.post('/process', authenticate, upload.single('image'), async (req, res) => {
   try {
-    const { colorId, projectName, maskingMethod, manualMask } = req.body;
+    const { colorId, projectName, maskingMethod, manualMask, pattern } = req.body;
     const imagePath = req.file.path;
     
     console.log('Starting paint visualization process...');
@@ -98,13 +98,14 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
       maskPath = await paintService.createMaskFromWallDetection(imagePath, detectionResults);
     }
     
-    // Step 3: Apply paint color using getimg.ai
-    console.log('Applying paint color...');
+    // Step 3: Apply paint color with pattern using getimg.ai
+    console.log('Applying paint color with pattern:', pattern || 'plain');
     const paintResult = await paintService.applyPaintColor(
       imagePath, 
       maskPath, 
       selectedColor.hexCode, 
-      selectedColor.name
+      selectedColor.name,
+      pattern || 'plain'
     );
     
     // Step 4: Generate color recommendations
@@ -122,7 +123,8 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
       originalImageUrl: `/uploads/${path.basename(imagePath)}`,
       processedImageUrl: paintResult.url,
       selectedColors: [colorId],
-      detectionResults: detectionResults
+      detectionResults: detectionResults,
+      pattern: pattern || 'plain'
     });
     
     await project.save();
@@ -139,6 +141,7 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         selectedColor: selectedColor,
         recommendations: recommendations,
         maskingMethod: maskingMethod,
+        pattern: pattern || 'plain',
         detectedWalls: detectionResults.predictions?.filter(p => p.class.toLowerCase() === 'wall').length || 0,
         detectedSurfaces: detectionResults.predictions?.length || 0,
         isManualMask: maskingMethod === 'manual'
