@@ -254,17 +254,16 @@ class PaintVisualizationService {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: `wall surface painted with exact ${colorHex} paint color, ${colorName} paint, solid uniform color coverage, flat matte finish, accurate color temperature, precise color matching`,
-        negative_prompt: 'color variations, color gradients, wrong color, off-color, color shift, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts',
-        strength: 0.85,              // Higher strength for better color adherence
-        cfg_scale: 12.0,             // High CFG for strict prompt following
-        steps: 40,                   // More steps for quality
-      
+        prompt: `wall painted with exact ${colorHex} color, ${colorName} paint, solid uniform flat color, matte finish, precise color match, no color variations`,
+        negative_prompt: 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color',
+        strength: 0.9,               // Very high strength for color control
+        guidance: 15.0,              // Maximum guidance for strict color adherence
+        steps: 50,                   // High steps for precision
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
         response_format: 'url',
-        seed: Math.floor(Math.random() * 1000000) // Random seed for variation
+        seed: 123456                 // Fixed seed for consistency
       };
 
       console.log(`the ${colorName} has ${colorHex}`);
