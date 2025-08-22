@@ -12,56 +12,77 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern-specific prompts for different paint patterns
+  // Generate pattern-specific prompts optimized for inpainting model capabilities
   generatePatternPrompt(colorHex, colorName, pattern) {
-    const baseColorDesc = `${colorName} color ${colorHex}`;
+    const baseColorDesc = `${colorName} paint color ${colorHex}`;
     
     const patternPrompts = {
       'plain': `wall painted with exact ${baseColorDesc}, solid uniform flat color, matte finish, precise color match, no patterns or texture`,
       
-      'accent-wall': `feature accent wall painted in ${baseColorDesc}, one wall highlighted, other walls neutral beige, modern interior design, focal point wall`,
+      'accent-wall': `dramatic accent wall painted in bold ${baseColorDesc}, feature wall design, one wall stands out from neutral surroundings, focal point interior design`,
       
-      'two-tone': `two-tone wall design with ${baseColorDesc} on lower half, neutral white on upper half, chair rail divider, classic interior style`,
+      'two-tone': `two tone wall with lower section painted ${baseColorDesc} and upper section cream white, chair rail molding dividing colors, traditional wainscoting design`,
       
-      'vertical-stripes': `vertical striped wall pattern with alternating ${baseColorDesc} and neutral white stripes, equal width stripes, clean lines, modern striped design`,
+      'vertical-stripes': `wall with bold vertical striped wallpaper pattern, alternating ${baseColorDesc} and white vertical stripes, each stripe 6 inches wide, crisp straight lines, preppy interior design`,
       
-      'horizontal-stripes': `horizontal striped wall with ${baseColorDesc} and white stripes, contemporary banded design, equal stripe width, modern interior`,
+      'horizontal-stripes': `wall with horizontal striped wallpaper, alternating bands of ${baseColorDesc} and cream white, each band 8 inches tall, nautical style interior design`,
       
-      'geometric': `geometric wall pattern with ${baseColorDesc} triangular shapes, modern geometric design, clean angular patterns, contemporary interior`,
+      'geometric': `wall with modern geometric wallpaper pattern, ${baseColorDesc} triangular shapes on white background, contemporary abstract wall design, architectural pattern`,
       
-      'ombre': `ombre gradient wall effect with ${baseColorDesc} fading to lighter shade, smooth color transition, gradient paint technique, artistic wall finish`,
+      'ombre': `wall with gradient ombre paint effect, ${baseColorDesc} at bottom fading to light cream at top, smooth color transition, artistic paint technique`,
       
-      'color-block': `color block wall design with bold ${baseColorDesc} geometric sections, modern abstract pattern, clean geometric shapes`,
+      'color-block': `wall with color blocking design, large rectangular section painted ${baseColorDesc}, modern minimalist wall treatment, architectural color blocking`,
       
-      'wainscoting': `wainscoting style with ${baseColorDesc} on lower third, neutral white upper wall, traditional chair rail molding, classic interior design`,
+      'wainscoting': `traditional wainscoting wall with lower third painted ${baseColorDesc}, upper wall white, white chair rail molding, classic colonial interior design`,
       
-      'border': `wall painted with ${baseColorDesc} and decorative border frame, painted border accent, elegant framed wall design`,
+      'border': `wall painted ${baseColorDesc} with decorative painted border frame around edges, elegant border design, formal interior styling`,
       
-      'textured': `textured wall finish with ${baseColorDesc}, subtle sponge texture effect, artistic textured paint application, dimensional wall surface`
+      'textured': `wall with textured paint finish in ${baseColorDesc}, subtle sponge painting technique, dimensional paint texture, artistic wall treatment`
     };
 
     return patternPrompts[pattern] || patternPrompts['plain'];
   }
 
-  // Generate pattern-specific negative prompts
+  // Generate pattern-specific negative prompts optimized for better pattern visibility
   generatePatternNegativePrompt(pattern) {
-    const baseNegative = 'wrong color, color shift, blurry, low quality, artifacts, oversaturated, undersaturated';
+    const baseNegative = 'blurry, low quality, artifacts, distorted, unrealistic';
     
     const patternNegatives = {
-      'plain': `${baseNegative}, patterns, stripes, texture, designs, decorations, uneven coverage`,
-      'accent-wall': `${baseNegative}, all walls same color, no focal wall, uniform color throughout`,
-      'two-tone': `${baseNegative}, single color, no division, uneven split, crooked lines`,
-      'vertical-stripes': `${baseNegative}, horizontal lines, diagonal stripes, uneven stripes, wavy lines`,
-      'horizontal-stripes': `${baseNegative}, vertical lines, diagonal stripes, uneven bands, curved lines`,
-      'geometric': `${baseNegative}, curved shapes, organic patterns, random shapes, messy patterns`,
-      'ombre': `${baseNegative}, sharp color changes, distinct bands, uniform color, no gradient`,
-      'color-block': `${baseNegative}, curved shapes, gradients, soft edges, organic patterns`,
-      'wainscoting': `${baseNegative}, uniform color, no division, missing chair rail, wrong proportions`,
-      'border': `${baseNegative}, no border, uniform color, missing frame, incomplete border`,
-      'textured': `${baseNegative}, smooth surface, flat finish, no texture, glossy finish`
+      'plain': `${baseNegative}, patterns, stripes, texture, designs, decorations, wallpaper, uneven coverage`,
+      'accent-wall': `${baseNegative}, uniform walls, no contrast, all walls same color, bland design`,
+      'two-tone': `${baseNegative}, single color wall, no division, missing chair rail, uniform paint`,
+      'vertical-stripes': `${baseNegative}, horizontal stripes, diagonal lines, curved stripes, solid color wall, no pattern`,
+      'horizontal-stripes': `${baseNegative}, vertical stripes, diagonal bands, curved lines, solid color, no bands`,
+      'geometric': `${baseNegative}, plain wall, no patterns, curved shapes, organic patterns, solid color`,
+      'ombre': `${baseNegative}, solid color, sharp edges, no gradient, uniform color, flat paint`,
+      'color-block': `${baseNegative}, solid color wall, no geometric shapes, uniform paint, no blocking`,
+      'wainscoting': `${baseNegative}, solid color wall, no molding, no division, modern minimalist`,
+      'border': `${baseNegative}, plain wall, no border, no frame, solid color, minimalist`,
+      'textured': `${baseNegative}, smooth wall, flat paint, glossy finish, no texture, plain surface`
     };
 
     return patternNegatives[pattern] || patternNegatives['plain'];
+  }
+
+  // Check if pattern requires special handling (most complex patterns)
+  requiresSpecialHandling(pattern) {
+    const complexPatterns = ['vertical-stripes', 'horizontal-stripes', 'geometric', 'color-block'];
+    return complexPatterns.includes(pattern);
+  }
+
+  // Generate alternative prompt strategy for complex patterns using wallpaper terminology
+  generateAlternativePatternPrompt(colorHex, colorName, pattern) {
+    const baseColorDesc = `${colorName} ${colorHex}`;
+    
+    // Use wallpaper/existing design terminology which AI models understand better
+    const alternativePrompts = {
+      'vertical-stripes': `room interior with vertical striped wallpaper covering the wall, bold ${baseColorDesc} and crisp white alternating vertical stripes, each stripe exactly 4 inches wide, preppy traditional wallpaper design, classic striped wall treatment`,
+      'horizontal-stripes': `room interior with horizontal striped wallpaper on wall, ${baseColorDesc} and white horizontal bands, each band 6 inches tall, nautical style wallpaper, banded wall covering design`,
+      'geometric': `room interior with geometric patterned wallpaper on wall, repeating ${baseColorDesc} triangle motifs on white background, modern abstract wallpaper design, contemporary geometric wall covering`,
+      'color-block': `room interior with color blocked wallpaper design, large rectangular ${baseColorDesc} sections alternating with white sections, modern minimalist wallpaper, architectural color blocking wall treatment`
+    };
+
+    return alternativePrompts[pattern] || this.generatePatternPrompt(colorHex, colorName, pattern);
   }
 
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
@@ -301,28 +322,76 @@ class PaintVisualizationService {
       const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // Generate pattern-specific prompts
-      const patternPrompt = this.generatePatternPrompt(colorHex, colorName, pattern);
+      // Generate pattern-specific prompts with special handling for complex patterns
+      const useAlternative = this.requiresSpecialHandling(pattern);
+      const patternPrompt = useAlternative 
+        ? this.generateAlternativePatternPrompt(colorHex, colorName, pattern)
+        : this.generatePatternPrompt(colorHex, colorName, pattern);
       const patternNegativePrompt = this.generatePatternNegativePrompt(pattern);
 
-      console.log(`Using pattern: ${pattern}`);
+      console.log(`Using pattern: ${pattern} (${useAlternative ? 'Alternative' : 'Standard'} approach)`);
       console.log(`Pattern prompt: ${patternPrompt}`);
 
-      // PAYLOAD OPTION 1: High Color Fidelity with Pattern Support (RECOMMENDED - Currently Active)
+      // Adjust parameters based on pattern complexity and type
+      const isComplexPattern = !['plain', 'accent-wall', 'two-tone', 'textured'].includes(pattern);
+      const isStripedPattern = ['vertical-stripes', 'horizontal-stripes'].includes(pattern);
+      
+      // Ultra-aggressive parameters for patterns to ensure visibility
+      let patternStrength, patternGuidance, patternSteps;
+      
+      if (pattern === 'plain') {
+        // Optimized for color accuracy
+        patternStrength = 0.9;
+        patternGuidance = 15.0;
+        patternSteps = 50;
+      } else if (isStripedPattern) {
+        // Maximum parameters for striped patterns (hardest to generate)
+        patternStrength = 0.98;
+        patternGuidance = 25.0;
+        patternSteps = 80;
+      } else if (isComplexPattern) {
+        // High parameters for geometric and complex patterns
+        patternStrength = 0.95;
+        patternGuidance = 22.0;
+        patternSteps = 70;
+      } else {
+        // Moderate parameters for simple patterns
+        patternStrength = 0.92;
+        patternGuidance = 18.0;
+        patternSteps = 60;
+      }
+
+      console.log(`Pattern: ${pattern}, Complexity: ${isComplexPattern ? 'Complex' : 'Simple'}, Striped: ${isStripedPattern}`);
+      console.log(`Using ultra-aggressive parameters - Strength: ${patternStrength}, Guidance: ${patternGuidance}, Steps: ${patternSteps}`);
+      
+      // Determine final prompts based on pattern complexity
+      let finalPrompt = patternPrompt;
+      let finalNegativePrompt = patternNegativePrompt;
+      
+      if (this.requiresSpecialHandling(pattern)) {
+        finalPrompt = this.generateAlternativePatternPrompt(colorHex, colorName, pattern);
+        finalNegativePrompt = `${patternNegativePrompt}, plain wall, solid color, no wallpaper, no pattern`;
+        console.log(`Complex pattern detected, using alternative approach`);
+      }
+
+      console.log(`Final prompt: ${finalPrompt}`);
+      console.log(`Final negative prompt: ${finalNegativePrompt}`);
+
+      // PAYLOAD OPTION 1: Ultra-Aggressive Pattern Generation (RECOMMENDED - Currently Active)
       const payload = {
         model: 'realistic-vision-v5-1-inpainting',
         image: cleanImage,
         mask_image: cleanMask,
-        prompt: patternPrompt,
-        negative_prompt: patternNegativePrompt,
-        strength: 0.9,               // Very high strength for color control
-        guidance: 15.0,              // Maximum guidance for strict color adherence
-        steps: 50,                   // High steps for precision
+        prompt: finalPrompt,
+        negative_prompt: finalNegativePrompt,
+        strength: patternStrength,      // Ultra-high strength for pattern visibility
+        guidance: patternGuidance,      // Maximum guidance for pattern adherence
+        steps: patternSteps,            // High steps for pattern quality
         width: newWidth,
         height: newHeight,
         output_format: 'jpeg',
         response_format: 'url',
-        seed: 123456                 // Fixed seed for consistency
+        seed: pattern === 'plain' ? 123456 : Math.floor(Math.random() * 1000)  // Random seeds for pattern variation
       };
 
       // PAYLOAD OPTION 2: Extreme Color Precision with Pattern (Uncomment to test)
