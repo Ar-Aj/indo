@@ -12,10 +12,10 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern transformation payloads using FLUX-1 (BEST MODEL FOR PATTERNS)
+  // Generate pattern transformation payloads using Stable Diffusion XL (SUPPORTED MODEL)
   generatePatternTransformationPayload(paintedWallImageBase64, colorHex, colorName, pattern) {
     const basePayload = {
-      model: 'flux-1-dev',
+      model: 'stable-diffusion-xl-v1-0',
       image: paintedWallImageBase64,
       output_format: 'jpeg',
       response_format: 'url',
@@ -27,11 +27,10 @@ class PaintVisualizationService {
       case 'accent-wall':
         return {
           ...basePayload,
-          prompt: `transform this painted wall into a dramatic accent wall design, enhance the ${colorName} ${colorHex} wall with accent wall styling, keep other walls neutral, professional interior design`,
-          negative_prompt: 'all walls same color, uniform walls, no accent design, poor contrast, changing room layout, adding furniture, people, text overlays',
-          strength: 0.65,
-          guidance: 14.0,
-          steps: 40,
+          prompt: `Transform this painted wall into a dramatic accent wall design, enhance the ${colorName} wall with bold accent styling while keeping other walls neutral. Create a striking focal point with professional interior design. Preserve the room structure and furniture.`,
+          strength: 0.6,
+          guidance: 7.0,
+          steps: 30,
           seed: 1001
         };
 
@@ -50,9 +49,9 @@ class PaintVisualizationService {
         return {
           ...basePayload,
           prompt: `Transform the painted wall to have classic vertical striped pattern with alternating ${colorName} and white vertical stripes. Each stripe should be 4 inches wide with perfectly straight parallel lines, creating a traditional wallpaper style with sharp clean edges. Preserve the room structure and furniture.`,
-          strength: 0.7,
-          guidance: 3.5,
-          steps: 30,
+          strength: 0.75,
+          guidance: 8.0,
+          steps: 35,
           seed: 3003
         };
 
@@ -82,8 +81,8 @@ class PaintVisualizationService {
         return {
           ...basePayload,
           prompt: `Transform the painted wall to have a stunning ombre gradient effect with ${colorName} at the bottom gradually fading to pure white at the top. Create a smooth seamless color transition with professional gradient technique. Preserve the room structure and furniture.`,
-          strength: 0.6,
-          guidance: 3.5,
+          strength: 0.65,
+          guidance: 7.0,
           steps: 30,
           seed: 6006
         };
@@ -125,8 +124,8 @@ class PaintVisualizationService {
         return {
           ...basePayload,
           prompt: `Transform the painted wall to have sophisticated flowing wave-like texture patterns while keeping the ${colorName} color. Add elegant organic wave formations with professional sponge painting technique, creating gentle undulating three-dimensional texture with soft matte finish. Preserve the room structure and furniture.`,
-          strength: 0.6,
-          guidance: 3.5,
+          strength: 0.7,
+          guidance: 7.5,
           steps: 30,
           seed: 1010
         };
@@ -477,23 +476,8 @@ class PaintVisualizationService {
       // Generate pattern-specific payload using BEST model for pattern transformation
       const patternPayload = this.generatePatternTransformationPayload(imageBase64, colorHex, colorName, pattern);
       
-      console.log(`Applying ${pattern} pattern using FLUX-1 model...`);
-      
-      // Try FLUX-1 first, fallback to SDXL if it fails
-      let patternResponse;
-      try {
-        patternResponse = await getimgAPI.post('/flux-1/image-to-image', patternPayload);
-      } catch (fluxError) {
-        console.log('FLUX-1 failed, trying SDXL fallback...');
-        // Fallback to SDXL with adjusted parameters
-        const sdxlPayload = {
-          ...patternPayload,
-          model: 'stable-diffusion-xl-v1-0',
-          guidance: 7.0,
-          steps: 25
-        };
-        patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', sdxlPayload);
-      }
+      console.log(`Applying ${pattern} pattern using Stable Diffusion XL img2img...`);
+      const patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', patternPayload);
 
       // Clean up temp mask file
       try {
