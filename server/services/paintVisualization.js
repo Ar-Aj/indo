@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 
 // Get current directory for proper path resolution
 const __filename = fileURLToPath(import.meta.url);
