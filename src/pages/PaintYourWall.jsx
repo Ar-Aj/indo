@@ -27,7 +27,15 @@ import {
   Undo,
   Check,
   X,
-  MousePointer
+  MousePointer,
+  Square,
+  Grid,
+  Layers,
+  Triangle,
+  Circle,
+  Waves,
+  Frame,
+  Maximize
 } from 'lucide-react';
 
 const PaintYourWall = () => {
@@ -36,6 +44,7 @@ const PaintYourWall = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedColor, setSelectedColor] = useState(location.state?.selectedColor || null);
+  const [selectedPattern, setSelectedPattern] = useState('plain');
   const [colors, setColors] = useState([]);
   const [brands, setBrands] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -63,6 +72,98 @@ const PaintYourWall = () => {
   } = useForm();
 
   const categories = ['neutral', 'warm', 'cool', 'bold'];
+
+  // Paint pattern options with professional descriptions
+  const paintPatterns = [
+    {
+      id: 'plain',
+      name: 'Plain/Solid',
+      description: 'Classic solid color application for a clean, timeless look',
+      icon: Square,
+      preview: 'Uniform color coverage',
+      popular: true
+    },
+    {
+      id: 'accent-wall',
+      name: 'Accent Wall',
+      description: 'Highlight one feature wall while keeping others neutral',
+      icon: Target,
+      preview: 'One bold wall, others neutral',
+      popular: true
+    },
+    {
+      id: 'two-tone',
+      name: 'Two-Tone',
+      description: 'Upper and lower wall sections in complementary colors',
+      icon: Layers,
+      preview: 'Horizontal split design',
+      popular: false
+    },
+    {
+      id: 'vertical-stripes',
+      name: 'Vertical Stripes',
+      description: 'Classic vertical stripes to create height illusion',
+      icon: Grid,
+      preview: 'Vertical striped pattern',
+      popular: false
+    },
+    {
+      id: 'horizontal-stripes',
+      name: 'Horizontal Stripes',
+      description: 'Modern horizontal bands for contemporary appeal',
+      icon: Maximize,
+      preview: 'Horizontal banded design',
+      popular: false
+    },
+    {
+      id: 'geometric',
+      name: 'Geometric Shapes',
+      description: 'Contemporary triangular or geometric patterns',
+      icon: Triangle,
+      preview: 'Modern geometric design',
+      popular: false
+    },
+    {
+      id: 'ombre',
+      name: 'Ombre/Gradient',
+      description: 'Subtle color fade from light to dark',
+      icon: Waves,
+      preview: 'Gradient color transition',
+      popular: false
+    },
+    {
+      id: 'color-block',
+      name: 'Color Block',
+      description: 'Bold geometric color sections for modern spaces',
+      icon: Circle,
+      preview: 'Bold geometric blocks',
+      popular: false
+    },
+    {
+      id: 'wainscoting',
+      name: 'Wainscoting Style',
+      description: 'Traditional lower wall color with upper neutral',
+      icon: Frame,
+      preview: 'Classic chair rail style',
+      popular: true
+    },
+    {
+      id: 'border',
+      name: 'Border/Frame',
+      description: 'Color with decorative border around the room',
+      icon: Frame,
+      preview: 'Elegant framed design',
+      popular: false
+    },
+    {
+      id: 'textured',
+      name: 'Textured Effect',
+      description: 'Sponge or stippled texture for artistic appeal',
+      icon: Brush,
+      preview: 'Artistic textured finish',
+      popular: false
+    }
+  ];
 
   // Fetch colors and brands on component mount
   useEffect(() => {
@@ -323,6 +424,7 @@ const PaintYourWall = () => {
       formData.append('colorId', selectedColor._id);
       formData.append('projectName', data.projectName || `${selectedColor.name} Project`);
       formData.append('maskingMethod', maskingMethod);
+      formData.append('pattern', selectedPattern);
       
       // Add manual mask if available
       if (maskingMethod === 'manual' && manualMask) {
@@ -337,8 +439,9 @@ const PaintYourWall = () => {
       setProcessingStep('Detecting walls, ceiling, and floor with AI...');
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Step 3: Applying paint
-      setProcessingStep('Applying paint color with AI...');
+      // Step 3: Applying paint with pattern
+      const patternName = paintPatterns.find(p => p.id === selectedPattern)?.name || 'Plain';
+      setProcessingStep(`Applying ${selectedColor.name} with ${patternName} pattern...`);
       await new Promise(resolve => setTimeout(resolve, 4000));
 
       // Step 4: Generating recommendations
@@ -362,6 +465,7 @@ const PaintYourWall = () => {
     setSelectedImage(null);
     setImagePreview(null);
     setSelectedColor(null);
+    setSelectedPattern('plain');
     setResult(null);
     setError(null);
     setProcessing(false);
@@ -392,7 +496,7 @@ const PaintYourWall = () => {
                 Paint Your Wall with AI
               </h1>
               <p className="text-lg text-gray-600">
-                Upload your room photo, select a color, and see realistic paint visualization
+                Upload your room photo, choose a pattern style, select a color, and see realistic paint visualization
               </p>
             </div>
             
@@ -418,9 +522,10 @@ const PaintYourWall = () => {
                   <ul className="text-sm text-blue-800 space-y-1">
                     <li>• Use well-lit photos with clear wall visibility</li>
                     <li>• Ensure walls, ceiling, and floor are clearly visible</li>
+                    <li>• Choose patterns based on your room style and preferences</li>
+                    <li>• Plain pattern works best for exact color matching</li>
                     <li>• Avoid blurry or heavily filtered images</li>
                     <li>• JPG or PNG format, maximum 10MB file size</li>
-                    <li>• Best results with interior room photos showing architectural elements</li>
                   </ul>
                 </div>
               </div>
@@ -464,9 +569,9 @@ const PaintYourWall = () => {
                 <div 
                   className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-1000 ease-out"
                   style={{
-                    width: processingStep.includes('Uploading') ? '25%' :
-                           processingStep.includes('Detecting') ? '50%' :
-                           processingStep.includes('Applying') ? '75%' :
+                    width: processingStep.includes('Uploading') ? '20%' :
+                           processingStep.includes('Detecting') ? '40%' :
+                           processingStep.includes('Applying') ? '70%' :
                            processingStep.includes('Generating') ? '90%' :
                            processingStep.includes('complete') ? '100%' : '10%'
                   }}
@@ -492,6 +597,9 @@ const PaintYourWall = () => {
               </div>
               <p className="text-green-700">
                 Your room has been transformed with {result.selectedColor?.name}
+                {result.pattern && result.pattern !== 'plain' && (
+                  <span> using {paintPatterns.find(p => p.id === result.pattern)?.name || result.pattern} pattern</span>
+                )}
               </p>
             </div>
             
@@ -512,27 +620,62 @@ const PaintYourWall = () => {
                 </div>
               </div>
               
-              {/* After */}
+              {/* After - Show both versions if pattern was selected */}
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold text-gray-900 flex items-center">
                   <Sparkles className="w-5 h-5 mr-2" />
                   With {result.selectedColor?.name}
                 </h4>
-                <div className="relative group">
-                  <img 
-                    src={result.processedImage} 
-                    alt="Painted room" 
-                    className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
-                </div>
+                
+                {/* Show both plain and pattern versions if pattern was selected */}
+                {result.hasBothVersions ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Plain Version */}
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">Plain Color</h5>
+                      <div className="relative group">
+                        <img 
+                          src={result.plainImage} 
+                          alt="Plain painted room" 
+                          className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Pattern Version */}
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">{result.pattern?.charAt(0).toUpperCase() + result.pattern?.slice(1).replace('-', ' ')} Pattern</h5>
+                      <div className="relative group">
+                        <img 
+                          src={result.patternImage} 
+                          alt="Patterned room" 
+                          className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Single version (plain only) */
+                  <div className="relative group">
+                    <img 
+                      src={result.processedImage} 
+                      alt="Painted room" 
+                      className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Color Details */}
+            {/* Color & Pattern Details */}
             <div className="card p-6 mb-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Selected Color Details</h4>
-              <div className="flex items-center space-x-4">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Selected Color & Pattern</h4>
+              
+              {/* Color Details */}
+              <div className="flex items-center space-x-4 mb-6">
                 <div 
                   className="w-16 h-16 rounded-xl border-4 border-white shadow-lg"
                   style={{ backgroundColor: result.selectedColor?.hexCode }}
@@ -554,6 +697,29 @@ const PaintYourWall = () => {
                   </div>
                 )}
               </div>
+
+              {/* Pattern Details */}
+              {result.pattern && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center space-x-4">
+                    {(() => {
+                      const patternData = paintPatterns.find(p => p.id === result.pattern);
+                      const IconComponent = patternData?.icon || Square;
+                      return (
+                        <>
+                          <div className="p-3 bg-purple-100 rounded-lg">
+                            <IconComponent className="w-6 h-6 text-purple-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h6 className="font-semibold text-gray-900">{patternData?.name || result.pattern}</h6>
+                            <p className="text-sm text-gray-600">{patternData?.description}</p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Analysis Results */}
@@ -646,14 +812,38 @@ const PaintYourWall = () => {
                 <Camera className="w-5 h-5 mr-2" />
                 Try Another Photo
               </button>
-              <a
-                href={result.processedImage}
-                download={`paintviz-${result.name}.jpg`}
-                className="btn-secondary px-6 py-3 flex items-center justify-center"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Download Result
-              </a>
+              
+              {/* Download buttons - show both if pattern was selected */}
+              {result.hasBothVersions ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <a
+                    href={result.plainImage}
+                    download={`paintviz-plain-${result.name}.jpg`}
+                    className="btn-secondary px-4 py-3 flex items-center justify-center text-sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Plain
+                  </a>
+                  <a
+                    href={result.patternImage}
+                    download={`paintviz-pattern-${result.name}.jpg`}
+                    className="btn-secondary px-4 py-3 flex items-center justify-center text-sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Pattern
+                  </a>
+                </div>
+              ) : (
+                <a
+                  href={result.processedImage}
+                  download={`paintviz-${result.name}.jpg`}
+                  className="btn-secondary px-6 py-3 flex items-center justify-center"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Download Result
+                </a>
+              )}
+              
               <button
                 onClick={() => {/* Share functionality */}}
                 className="btn-secondary px-6 py-3 flex items-center justify-center"
@@ -1054,11 +1244,134 @@ const PaintYourWall = () => {
               </div>
             )}
 
-            {/* Step 2: Color Selection */}
+            {/* Step 2: Pattern Selection (only show if image is uploaded) */}
+            {imagePreview && (
+              <div className="card p-8">
+                <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <Grid className="w-6 h-6 mr-3" />
+                  Step 2: Choose Paint Pattern
+                </h3>
+                
+                <p className="text-gray-600 mb-6">
+                  Select how you want the paint to be applied. Each pattern creates a different visual effect.
+                </p>
+
+                {/* Popular Patterns First */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                    Popular Patterns
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {paintPatterns.filter(pattern => pattern.popular).map((pattern) => {
+                      const IconComponent = pattern.icon;
+                      return (
+                        <button
+                          key={pattern.id}
+                          type="button"
+                          onClick={() => setSelectedPattern(pattern.id)}
+                          disabled={processing}
+                          className={`p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                            selectedPattern === pattern.id
+                              ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
+                              : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
+                          }`}
+                        >
+                          <div className="flex items-start space-x-4">
+                            <div className={`p-3 rounded-lg ${
+                              selectedPattern === pattern.id ? 'bg-blue-100' : 'bg-gray-100'
+                            }`}>
+                              <IconComponent className={`w-6 h-6 ${
+                                selectedPattern === pattern.id ? 'text-blue-600' : 'text-gray-600'
+                              }`} />
+                            </div>
+                            <div className="flex-1">
+                              <h5 className="font-bold text-gray-900 mb-1">{pattern.name}</h5>
+                              <p className="text-sm text-gray-600 mb-2">{pattern.description}</p>
+                              <p className="text-xs text-blue-600 font-medium">{pattern.preview}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* All Patterns */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Palette className="w-5 h-5 mr-2 text-purple-500" />
+                    All Pattern Options
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {paintPatterns.map((pattern) => {
+                      const IconComponent = pattern.icon;
+                      return (
+                        <button
+                          key={pattern.id}
+                          type="button"
+                          onClick={() => setSelectedPattern(pattern.id)}
+                          disabled={processing}
+                          className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                            selectedPattern === pattern.id
+                              ? 'border-blue-500 bg-blue-50 shadow-lg'
+                              : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 mb-2">
+                            <IconComponent className={`w-5 h-5 ${
+                              selectedPattern === pattern.id ? 'text-blue-600' : 'text-gray-600'
+                            }`} />
+                            <h5 className="font-semibold text-gray-900 text-sm">{pattern.name}</h5>
+                            {pattern.popular && (
+                              <div className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">
+                                Popular
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600">{pattern.preview}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                                 {/* Selected Pattern Display */}
+                 <div className="mt-6 card p-6 bg-gradient-to-r from-purple-50 to-blue-50">
+                   <h4 className="font-semibold text-gray-900 mb-3">Selected Pattern:</h4>
+                   <div className="flex items-center space-x-4">
+                     {(() => {
+                       const selectedPatternData = paintPatterns.find(p => p.id === selectedPattern);
+                       const IconComponent = selectedPatternData?.icon || Square;
+                       return (
+                         <>
+                           <div className="p-4 bg-white rounded-xl shadow-sm">
+                             <IconComponent className="w-8 h-8 text-blue-600" />
+                           </div>
+                           <div className="flex-1">
+                             <h5 className="text-xl font-bold text-gray-900">{selectedPatternData?.name}</h5>
+                             <p className="text-gray-600">{selectedPatternData?.description}</p>
+                             <p className="text-sm text-blue-600 font-medium mt-1">{selectedPatternData?.preview}</p>
+                             {selectedPattern !== 'plain' && (
+                               <div className="mt-2 inline-flex items-center bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs">
+                                 <Sparkles className="w-3 h-3 mr-1" />
+                                 Creative Pattern
+                               </div>
+                             )}
+                           </div>
+                         </>
+                       );
+                     })()}
+                   </div>
+                 </div>
+              </div>
+            )}
+
+            {/* Step 3: Color Selection */}
             <div className="card p-8">
               <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                 <Palette className="w-6 h-6 mr-3" />
-                Step 2: Choose Your Paint Color
+                Step 3: Choose Your Paint Color
               </h3>
 
               {/* Color Filters */}
@@ -1203,10 +1516,10 @@ const PaintYourWall = () => {
               )}
             </div>
 
-            {/* Step 3: Project Details */}
+            {/* Step 4: Project Details */}
             <div className="card p-8">
               <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-                Step 3: Project Details
+                Step 4: Project Details
               </h3>
               
               <div className="space-y-4">
@@ -1253,10 +1566,10 @@ const PaintYourWall = () => {
                   {!selectedImage 
                     ? 'Please upload an image to continue'
                     : !selectedColor 
-                    ? 'Please select a paint color to continue'
+                    ? 'Please select a pattern and paint color to continue'
                     : maskingMethod === 'manual' && !manualMask
                     ? 'Please select areas to paint or choose AI detection'
-                    : 'All set! Ready to visualize.'
+                    : 'All set! Ready to visualize with your selected pattern.'
                   }
                 </p>
               )}
