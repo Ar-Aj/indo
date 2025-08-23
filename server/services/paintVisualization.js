@@ -458,7 +458,7 @@ class PaintVisualizationService {
       height: newHeight,
       output_format: 'jpeg',
       response_format: 'url',
-      seed: 59000
+      seed: 5900
     };
 
     console.log(`the ${colorName} has ${colorHex}`);
