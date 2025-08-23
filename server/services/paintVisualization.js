@@ -12,12 +12,11 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern payloads for painted walls using INPAINTING with MASK (STEP 2)
-  generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
+  // Generate pattern transformation payloads using FLUX-1 (BEST MODEL FOR PATTERNS)
+  generatePatternTransformationPayload(paintedWallImageBase64, colorHex, colorName, pattern) {
     const basePayload = {
-      model: 'realistic-vision-v5-1-inpainting',
+      model: 'flux-1-dev',
       image: paintedWallImageBase64,
-      mask_image: maskBase64,
       output_format: 'jpeg',
       response_format: 'url',
       width: 1024,
@@ -50,11 +49,10 @@ class PaintVisualizationService {
       case 'vertical-stripes':
         return {
           ...basePayload,
-          prompt: `wall with classic vertical striped pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
-          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays, furniture changes',
-          strength: 0.85,
-          guidance: 18.0,
-          steps: 50,
+          prompt: `Transform the painted wall to have classic vertical striped pattern with alternating ${colorName} and white vertical stripes. Each stripe should be 4 inches wide with perfectly straight parallel lines, creating a traditional wallpaper style with sharp clean edges. Preserve the room structure and furniture.`,
+          strength: 0.7,
+          guidance: 3.5,
+          steps: 30,
           seed: 3003
         };
 
@@ -83,11 +81,10 @@ class PaintVisualizationService {
       case 'ombre':
         return {
           ...basePayload,
-          prompt: `interior room with stunning ombre gradient wall effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique, maintain room structure and lighting`,
-          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays, objects, furniture changes, people, changing room layout',
+          prompt: `Transform the painted wall to have a stunning ombre gradient effect with ${colorName} at the bottom gradually fading to pure white at the top. Create a smooth seamless color transition with professional gradient technique. Preserve the room structure and furniture.`,
           strength: 0.6,
-          guidance: 14.0,
-          steps: 35,
+          guidance: 3.5,
+          steps: 30,
           seed: 6006
         };
 
@@ -127,11 +124,10 @@ class PaintVisualizationService {
       case 'textured':
         return {
           ...basePayload,
-          prompt: `wall with sophisticated textured finish, flowing wave-like texture pattern, ${colorName} ${colorHex} base color with elegant sponge painting technique, organic wave formations, professional faux finish, gentle undulating waves, three-dimensional texture, soft matte finish`,
-          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns',
-          strength: 0.8,
-          guidance: 16.0,
-          steps: 45,
+          prompt: `Transform the painted wall to have sophisticated flowing wave-like texture patterns while keeping the ${colorName} color. Add elegant organic wave formations with professional sponge painting technique, creating gentle undulating three-dimensional texture with soft matte finish. Preserve the room structure and furniture.`,
+          strength: 0.6,
+          guidance: 3.5,
+          steps: 30,
           seed: 1010
         };
 
@@ -478,15 +474,26 @@ class PaintVisualizationService {
       const imageBuffer = await response.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-      // Use the SAME mask from Step 1 to ensure pattern only applies to painted area
-      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
-      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-
-      // Generate pattern-specific payload using inpainting with mask
-      const patternPayload = this.generatePatternInpaintingPayload(imageBase64, cleanMask, colorHex, colorName, pattern);
+      // Generate pattern-specific payload using BEST model for pattern transformation
+      const patternPayload = this.generatePatternTransformationPayload(imageBase64, colorHex, colorName, pattern);
       
-      console.log(`Applying ${pattern} pattern using inpainting with mask...`);
-      const patternResponse = await getimgAPI.post('/stable-diffusion/inpaint', patternPayload);
+      console.log(`Applying ${pattern} pattern using FLUX-1 model...`);
+      
+      // Try FLUX-1 first, fallback to SDXL if it fails
+      let patternResponse;
+      try {
+        patternResponse = await getimgAPI.post('/flux-1/image-to-image', patternPayload);
+      } catch (fluxError) {
+        console.log('FLUX-1 failed, trying SDXL fallback...');
+        // Fallback to SDXL with adjusted parameters
+        const sdxlPayload = {
+          ...patternPayload,
+          model: 'stable-diffusion-xl-v1-0',
+          guidance: 7.0,
+          steps: 25
+        };
+        patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', sdxlPayload);
+      }
 
       // Clean up temp mask file
       try {
