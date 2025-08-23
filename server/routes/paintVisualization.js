@@ -126,16 +126,6 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
       maskPath = await paintService.createMaskFromWallDetection(imagePath, detectionResults);
     }
     
-    // Check if we're using fallback/mock data to avoid wasting API credits
-    if (detectionResults.isApiFailure) {
-      console.log('🚨 SKIPPING PAINT APPLICATION - API detection failed, avoiding credit waste');
-      return res.status(500).json({
-        error: 'Wall detection failed - all models returned errors',
-        details: 'Please check Roboflow API connectivity and try again',
-        fallbackUsed: true
-      });
-    }
-
     // Step 3: Apply paint color with pattern using getimg.ai
     console.log('Applying paint color with pattern:', pattern || 'plain');
     const paintResult = await paintService.applyPaintColor(
