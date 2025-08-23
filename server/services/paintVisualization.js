@@ -12,11 +12,12 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern payloads for already painted walls (STEP 2) - Using img2img
-  generatePatternPayloadForPaintedWall(paintedWallImageBase64, colorHex, colorName, pattern) {
+  // Generate pattern payloads for painted walls using INPAINTING with MASK (STEP 2)
+  generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
     const basePayload = {
-      model: 'stable-diffusion-xl-v1-0',
+      model: 'realistic-vision-v5-1-inpainting',
       image: paintedWallImageBase64,
+      mask_image: maskBase64,
       output_format: 'jpeg',
       response_format: 'url',
       width: 1024,
@@ -49,11 +50,11 @@ class PaintVisualizationService {
       case 'vertical-stripes':
         return {
           ...basePayload,
-          prompt: `interior room with classic vertical striped wall pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, maintain room structure and furniture`,
-          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays, changing room layout, people',
-          strength: 0.65,
-          guidance: 16.0,
-          steps: 40,
+          prompt: `wall with classic vertical striped pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
+          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays, furniture changes',
+          strength: 0.85,
+          guidance: 18.0,
+          steps: 50,
           seed: 3003
         };
 
@@ -126,11 +127,11 @@ class PaintVisualizationService {
       case 'textured':
         return {
           ...basePayload,
-          prompt: `interior room with sophisticated textured wall finish, flowing wave-like texture pattern throughout the entire wall surface, ${colorName} ${colorHex} base color with elegant sponge painting technique creating organic wave formations, professional faux finish with gentle undulating waves, three-dimensional texture, soft matte finish, maintain room structure`,
-          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns, people, changing room layout',
-          strength: 0.7,
-          guidance: 15.0,
-          steps: 40,
+          prompt: `wall with sophisticated textured finish, flowing wave-like texture pattern, ${colorName} ${colorHex} base color with elegant sponge painting technique, organic wave formations, professional faux finish, gentle undulating waves, three-dimensional texture, soft matte finish`,
+          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns',
+          strength: 0.8,
+          guidance: 16.0,
+          steps: 45,
           seed: 1010
         };
 
@@ -390,9 +391,9 @@ class PaintVisualizationService {
         };
       }
 
-      // STEP 2: Apply pattern to the plain painted wall
+      // STEP 2: Apply pattern to the plain painted wall using same mask
       console.log(`STEP 2: Applying ${pattern} pattern to plain painted wall...`);
-      const patternResult = await this.applyPatternToPlainWall(plainResult.url, colorHex, colorName, pattern);
+      const patternResult = await this.applyPatternToPlainWall(plainResult.url, colorHex, colorName, pattern, plainResult.resizedMaskPath);
 
       return {
         url: patternResult.url,
@@ -417,7 +418,7 @@ class PaintVisualizationService {
     }
   }
 
-  // STEP 1: Generate plain painted wall (Your perfect system - unchanged)
+  // STEP 1: Generate plain painted wall (RESTORE ORIGINAL PERFECT SYSTEM)
   async generatePlainPaintedWall(originalImagePath, maskImagePath, colorHex, colorName) {
     // Resize images first for API compatibility
     const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
@@ -430,7 +431,7 @@ class PaintVisualizationService {
     const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
     const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-    // 🎯 ORIGINAL PERFECT PAYLOAD - DO NOT CHANGE!
+    // 🎯 RESTORE YOUR ORIGINAL PERFECT PAYLOAD THAT WAS WORKING!
     const plainPayload = {
       model: 'realistic-vision-v5-1-inpainting',
       image: cleanImage,
@@ -447,28 +448,29 @@ class PaintVisualizationService {
       seed: 420
     };
 
-    console.log(`Sending plain paint request: ${newWidth}x${newHeight}`);
+    console.log(`the ${colorName} has ${colorHex}`);
+    console.log(`Sending to getimg.ai: ${newWidth}x${newHeight}`);
     const response = await getimgAPI.post('/stable-diffusion/inpaint', plainPayload);
 
-    // Clean up temporary resized files
+    // Clean up ONLY the resized image, keep mask for Step 2
     try {
       if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
-      if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
     } catch (cleanupError) {
-      console.warn('Failed to clean up temp files:', cleanupError.message);
+      console.warn('Failed to clean up temp image file:', cleanupError.message);
     }
 
     console.log('STEP 1 COMPLETE: Plain painted wall generated successfully');
     return {
       url: response.data.url,
-      message: 'Plain paint successful'
+      message: 'Plain paint successful',
+      resizedMaskPath: resizedMaskPath
     };
   }
 
-  // STEP 2: Apply pattern to the already painted wall
-  async applyPatternToPlainWall(plainPaintedImageUrl, colorHex, colorName, pattern) {
+  // STEP 2: Apply pattern to ONLY the painted wall area using SAME MASK
+  async applyPatternToPlainWall(plainPaintedImageUrl, colorHex, colorName, pattern, resizedMaskPath) {
     try {
-      console.log(`Downloading plain painted image from: ${plainPaintedImageUrl}`);
+      console.log(`Applying ${pattern} pattern to only the painted wall area...`);
       
       // Download the plain painted image
       const fetch = (await import('node-fetch')).default;
@@ -476,13 +478,24 @@ class PaintVisualizationService {
       const imageBuffer = await response.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-      // Generate pattern-specific payload for the painted wall
-      const patternPayload = this.generatePatternPayloadForPaintedWall(imageBase64, colorHex, colorName, pattern);
-      
-      console.log(`Applying ${pattern} pattern to painted wall...`);
-      const patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', patternPayload);
+      // Use the SAME mask from Step 1 to ensure pattern only applies to painted area
+      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
+      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      console.log('STEP 2 COMPLETE: Pattern applied successfully');
+      // Generate pattern-specific payload using inpainting with mask
+      const patternPayload = this.generatePatternInpaintingPayload(imageBase64, cleanMask, colorHex, colorName, pattern);
+      
+      console.log(`Applying ${pattern} pattern using inpainting with mask...`);
+      const patternResponse = await getimgAPI.post('/stable-diffusion/inpaint', patternPayload);
+
+      // Clean up temp mask file
+      try {
+        if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
+      } catch (cleanupError) {
+        console.warn('Failed to clean up mask file:', cleanupError.message);
+      }
+
+      console.log('STEP 2 COMPLETE: Pattern applied successfully to painted area only');
       return {
         url: patternResponse.data.url,
         message: 'Pattern application successful'
