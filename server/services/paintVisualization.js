@@ -12,11 +12,12 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern transformation payloads using Stable Diffusion XL (SUPPORTED MODEL)
-  generatePatternTransformationPayload(paintedWallImageBase64, colorHex, colorName, pattern) {
+  // Generate pattern inpainting payloads using SDXL inpainting with mask (STEP 2)
+  generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
     const basePayload = {
       model: 'stable-diffusion-xl-v1-0',
       image: paintedWallImageBase64,
+      mask_image: maskBase64,
       output_format: 'jpeg',
       response_format: 'url',
       width: 1024,
@@ -27,31 +28,46 @@ class PaintVisualizationService {
       case 'accent-wall':
         return {
           ...basePayload,
-          prompt: `Transform this painted wall into a dramatic accent wall design, enhance the ${colorName} wall with bold accent styling while keeping other walls neutral. Create a striking focal point with professional interior design. Preserve the room structure and furniture.`,
-          strength: 0.6,
-          guidance: 7.0,
-          steps: 30,
+          prompt: `dramatic accent wall design, bold ${colorName} wall styling, striking focal point, professional interior design`,
+          negative_prompt: 'all walls same color, uniform walls, no accent, poor contrast, different colors, room changes, furniture, objects, people',
+          strength: 0.7,
+          guidance: 7.5,
+          steps: 35,
           seed: 1001
         };
 
       case 'two-tone':
         return {
           ...basePayload,
-          prompt: `transform this ${colorName} painted wall into elegant two-tone design, lower section ${colorName} ${colorHex}, upper section crisp white, add horizontal chair rail molding at 36 inches, traditional wainscoting style`,
-          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, color bleeding, messy paint lines, gradient effects, text overlays',
-          strength: 0.75,
-          guidance: 16.0,
-          steps: 45,
+          prompt: `wall with two-tone paint design, lower section ${colorName}, upper section white, horizontal division with chair rail molding, traditional wainscoting style`,
+          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, different colors, room changes, furniture, objects, people',
+          strength: 0.8,
+          guidance: 8.5,
+          steps: 40,
           seed: 2002
         };
+
+      case 'horizontal-stripes':
+        return {
+          ...basePayload,
+          prompt: `wall with horizontal striped pattern, alternating ${colorName} and white horizontal bands, each stripe 6 inches tall, perfectly straight horizontal lines, coastal design`,
+          negative_prompt: 'vertical stripes, diagonal stripes, uneven stripes, tilted lines, wavy bands, different colors, room changes, furniture, objects, people',
+          strength: 0.85,
+          guidance: 9.0,
+          steps: 45,
+          seed: 4004
+        };
+
+
 
       case 'vertical-stripes':
         return {
           ...basePayload,
-          prompt: `Transform the painted wall to have classic vertical striped pattern with alternating ${colorName} and white vertical stripes. Each stripe should be 4 inches wide with perfectly straight parallel lines, creating a traditional wallpaper style with sharp clean edges. Preserve the room structure and furniture.`,
-          strength: 0.75,
-          guidance: 8.0,
-          steps: 35,
+          prompt: `wall with classic vertical striped pattern, alternating ${colorName} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
+          negative_prompt: 'horizontal stripes, diagonal stripes, uneven stripes, crooked lines, wavy lines, different colors, room changes, furniture, objects, people',
+          strength: 0.85,
+          guidance: 9.0,
+          steps: 45,
           seed: 3003
         };
 
@@ -80,10 +96,11 @@ class PaintVisualizationService {
       case 'ombre':
         return {
           ...basePayload,
-          prompt: `Transform the painted wall to have a stunning ombre gradient effect with ${colorName} at the bottom gradually fading to pure white at the top. Create a smooth seamless color transition with professional gradient technique. Preserve the room structure and furniture.`,
-          strength: 0.65,
-          guidance: 7.0,
-          steps: 30,
+          prompt: `wall with stunning ombre gradient effect, ${colorName} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique`,
+          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, color bands, uneven fade, different colors, room changes, furniture, objects, people',
+          strength: 0.75,
+          guidance: 8.0,
+          steps: 40,
           seed: 6006
         };
 
@@ -123,10 +140,11 @@ class PaintVisualizationService {
       case 'textured':
         return {
           ...basePayload,
-          prompt: `Transform the painted wall to have sophisticated flowing wave-like texture patterns while keeping the ${colorName} color. Add elegant organic wave formations with professional sponge painting technique, creating gentle undulating three-dimensional texture with soft matte finish. Preserve the room structure and furniture.`,
-          strength: 0.7,
-          guidance: 7.5,
-          steps: 30,
+          prompt: `${colorName} wall with flowing wave-like texture pattern, elegant organic wave formations, professional sponge painting technique, gentle undulating three-dimensional texture, soft matte finish`,
+          negative_prompt: 'flat wall, no texture, glossy finish, smooth surface, different colors, room changes, furniture, objects, people',
+          strength: 0.8,
+          guidance: 8.0,
+          steps: 40,
           seed: 1010
         };
 
@@ -473,11 +491,15 @@ class PaintVisualizationService {
       const imageBuffer = await response.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-      // Generate pattern-specific payload using BEST model for pattern transformation
-      const patternPayload = this.generatePatternTransformationPayload(imageBase64, colorHex, colorName, pattern);
+      // Use the SAME mask from Step 1 to ensure pattern only applies to painted area
+      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
+      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+
+      // Generate pattern-specific payload using INPAINTING with mask
+      const patternPayload = this.generatePatternInpaintingPayload(imageBase64, cleanMask, colorHex, colorName, pattern);
       
-      console.log(`Applying ${pattern} pattern using Stable Diffusion XL img2img...`);
-      const patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', patternPayload);
+      console.log(`Applying ${pattern} pattern using SDXL inpainting with mask...`);
+      const patternResponse = await getimgAPI.post('/stable-diffusion-xl/inpaint', patternPayload);
 
       // Clean up temp mask file
       try {
