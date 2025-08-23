@@ -174,7 +174,14 @@ class PaintVisualizationService {
       console.log('Detecting walls using Wall-Wasil model...');
       
       const apiKey = 'hqkeI7fba9NgZle7Ju5y';
-      const image = fs.readFileSync(imagePath, { encoding: "base64" });
+      
+      // CRITICAL: Resize image to 640x640 as required by the models
+      const imageBuffer = fs.readFileSync(imagePath);
+      const resizedBuffer = await sharp(imageBuffer)
+        .resize(640, 640)
+        .jpeg({ quality: 90 })
+        .toBuffer();
+      const image = resizedBuffer.toString('base64');
 
       const response = await roboflowAPI.post(
         `/wall-wasil-1/2?api_key=${apiKey}&confidence=0.3`,
@@ -197,7 +204,14 @@ class PaintVisualizationService {
         console.log('Trying Wall-Ceiling-Floor model as backup...');
         
         const apiKey = 'hqkeI7fba9NgZle7Ju5y';
-        const image = fs.readFileSync(imagePath, { encoding: "base64" });
+        
+        // CRITICAL: Resize image to 640x640 as required by the models
+        const imageBuffer = fs.readFileSync(imagePath);
+        const resizedBuffer = await sharp(imageBuffer)
+          .resize(640, 640)
+          .jpeg({ quality: 90 })
+          .toBuffer();
+        const image = resizedBuffer.toString('base64');
 
         const response = await roboflowAPI.post(
           `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}&confidence=0.3`,
