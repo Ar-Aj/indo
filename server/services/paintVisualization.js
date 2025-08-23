@@ -167,30 +167,7 @@ class PaintVisualizationService {
 
 
 
-  // Color categorization for better AI understanding
-  getColorCategory(colorHex) {
-    const hex = colorHex.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    const saturation = Math.max(r, g, b) - Math.min(r, g, b);
-    
-    // Dark colors need special handling
-    if (brightness < 80) return 'deep dark';
-    if (brightness < 130) return 'dark';
-    
-    // Color families based on dominant RGB values
-    if (r > g && r > b) return saturation > 50 ? 'vibrant red' : 'warm';
-    if (g > r && g > b) return saturation > 50 ? 'vibrant green' : 'natural green';
-    if (b > r && b > g) return saturation > 50 ? 'vibrant blue' : 'cool blue';
-    
-    // Neutral tones
-    if (saturation < 30) return brightness > 180 ? 'light neutral' : 'neutral';
-    
-    return 'medium tone';
-  }
+
 
   // Step 1: Detect walls using Roboflow - SIMPLE APPROACH
   async detectWallSurfaces(imagePath) {
@@ -542,18 +519,15 @@ class PaintVisualizationService {
     const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
     // 🎯 RESTORE YOUR ORIGINAL PERFECT PAYLOAD THAT WAS WORKING!
-    // Get color category for better AI understanding
-    const colorCategory = this.getColorCategory(colorHex);
-    
     const plainPayload = {
       model: 'realistic-vision-v5-1-inpainting',
       image: cleanImage,
       mask_image: cleanMask,
-      prompt: `wall painted in ${colorCategory} paint color ${colorHex}, exact hex color match, flat matte wall finish, natural indoor lighting, preserve room structure`,
-      negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes, glossy finish, texture patterns',
-      strength: 0.95,
-      guidance: 15.0,
-      steps: 40,
+      prompt: `wall painted in solid paint color ${colorHex}, exact color ${colorHex}, flat wall paint, realistic lighting`,
+      negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, color shift, wrong color, different color, lighting fixtures, architectural changes',
+      strength: 0.85,
+      guidance: 8.0,
+      steps: 25,
       width: newWidth,
       height: newHeight,
       output_format: 'jpeg',
