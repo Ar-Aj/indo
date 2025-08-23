@@ -122,6 +122,8 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
       name: projectName || `Project ${Date.now()}`,
       originalImageUrl: `/uploads/${path.basename(imagePath)}`,
       processedImageUrl: paintResult.url,
+      plainImageUrl: paintResult.plainUrl || paintResult.url, // Always have plain version
+      patternImageUrl: paintResult.patternUrl, // May be undefined for plain patterns
       selectedColors: [colorId],
       detectionResults: detectionResults,
       pattern: pattern || 'plain'
@@ -138,13 +140,16 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         name: project.name,
         originalImage: `/uploads/${path.basename(imagePath)}`,
         processedImage: paintResult.url,
+        plainImage: paintResult.plainUrl || paintResult.url, // Always include plain version
+        patternImage: paintResult.patternUrl, // Include pattern version if exists
         selectedColor: selectedColor,
         recommendations: recommendations,
         maskingMethod: maskingMethod,
         pattern: pattern || 'plain',
         detectedWalls: detectionResults.predictions?.filter(p => p.class.toLowerCase() === 'wall').length || 0,
         detectedSurfaces: detectionResults.predictions?.length || 0,
-        isManualMask: maskingMethod === 'manual'
+        isManualMask: maskingMethod === 'manual',
+        hasBothVersions: !!(paintResult.plainUrl && paintResult.patternUrl) // Boolean flag for frontend
       }
     });
     

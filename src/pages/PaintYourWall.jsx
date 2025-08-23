@@ -620,20 +620,53 @@ const PaintYourWall = () => {
                 </div>
               </div>
               
-              {/* After */}
+              {/* After - Show both versions if pattern was selected */}
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold text-gray-900 flex items-center">
                   <Sparkles className="w-5 h-5 mr-2" />
                   With {result.selectedColor?.name}
                 </h4>
-                <div className="relative group">
-                  <img 
-                    src={result.processedImage} 
-                    alt="Painted room" 
-                    className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
-                </div>
+                
+                {/* Show both plain and pattern versions if pattern was selected */}
+                {result.hasBothVersions ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Plain Version */}
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">Plain Color</h5>
+                      <div className="relative group">
+                        <img 
+                          src={result.plainImage} 
+                          alt="Plain painted room" 
+                          className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Pattern Version */}
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">{result.pattern?.charAt(0).toUpperCase() + result.pattern?.slice(1).replace('-', ' ')} Pattern</h5>
+                      <div className="relative group">
+                        <img 
+                          src={result.patternImage} 
+                          alt="Patterned room" 
+                          className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Single version (plain only) */
+                  <div className="relative group">
+                    <img 
+                      src={result.processedImage} 
+                      alt="Painted room" 
+                      className="w-full rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -779,14 +812,38 @@ const PaintYourWall = () => {
                 <Camera className="w-5 h-5 mr-2" />
                 Try Another Photo
               </button>
-              <a
-                href={result.processedImage}
-                download={`paintviz-${result.name}.jpg`}
-                className="btn-secondary px-6 py-3 flex items-center justify-center"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Download Result
-              </a>
+              
+              {/* Download buttons - show both if pattern was selected */}
+              {result.hasBothVersions ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <a
+                    href={result.plainImage}
+                    download={`paintviz-plain-${result.name}.jpg`}
+                    className="btn-secondary px-4 py-3 flex items-center justify-center text-sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Plain
+                  </a>
+                  <a
+                    href={result.patternImage}
+                    download={`paintviz-pattern-${result.name}.jpg`}
+                    className="btn-secondary px-4 py-3 flex items-center justify-center text-sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Pattern
+                  </a>
+                </div>
+              ) : (
+                <a
+                  href={result.processedImage}
+                  download={`paintviz-${result.name}.jpg`}
+                  className="btn-secondary px-6 py-3 flex items-center justify-center"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Download Result
+                </a>
+              )}
+              
               <button
                 onClick={() => {/* Share functionality */}}
                 className="btn-secondary px-6 py-3 flex items-center justify-center"

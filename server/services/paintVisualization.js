@@ -12,6 +12,140 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
+  // Generate pattern payloads for already painted walls (STEP 2)
+  generatePatternPayloadForPaintedWall(paintedWallImageBase64, colorHex, colorName, pattern) {
+    const basePayload = {
+      model: 'realistic-vision-v5-1-inpainting',
+      image: paintedWallImageBase64,
+      // Note: No mask needed since we're modifying the entire painted wall
+      output_format: 'jpeg',
+      response_format: 'url'
+    };
+
+    switch (pattern) {
+      case 'accent-wall':
+        return {
+          ...basePayload,
+          prompt: `transform this painted wall into a dramatic accent wall design, enhance the ${colorName} ${colorHex} wall with accent wall styling, keep other walls neutral, professional interior design`,
+          negative_prompt: 'all walls same color, uniform walls, no accent design, poor contrast, changing room layout, adding furniture, people, text overlays',
+          strength: 0.65,
+          guidance: 14.0,
+          steps: 40,
+          seed: 1001
+        };
+
+      case 'two-tone':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into elegant two-tone design, lower section ${colorName} ${colorHex}, upper section crisp white, add horizontal chair rail molding at 36 inches, traditional wainscoting style`,
+          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, color bleeding, messy paint lines, gradient effects, text overlays',
+          strength: 0.75,
+          guidance: 16.0,
+          steps: 45,
+          seed: 2002
+        };
+
+      case 'vertical-stripes':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into classic vertical striped pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, crisp paint edges`,
+          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays',
+          strength: 0.80,
+          guidance: 18.0,
+          steps: 50,
+          seed: 3003
+        };
+
+      case 'horizontal-stripes':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into nautical horizontal striped pattern, alternating ${colorName} ${colorHex} and white horizontal bands, each stripe 6 inches tall, perfectly straight lines, coastal design`,
+          negative_prompt: 'vertical stripes, uneven stripe heights, tilted lines, wavy bands, wrong proportions, rough edges, diagonal patterns, text overlays',
+          strength: 0.78,
+          guidance: 17.0,
+          steps: 48,
+          seed: 4004
+        };
+
+      case 'geometric':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into modern geometric pattern, ${colorName} ${colorHex} triangular shapes on white background, contemporary art deco design, clean geometric forms, symmetrical pattern`,
+          negative_prompt: 'organic shapes, curved lines, random patterns, traditional designs, floral motifs, uneven geometry, soft edges, text overlays',
+          strength: 0.85,
+          guidance: 19.0,
+          steps: 55,
+          seed: 5005
+        };
+
+      case 'ombre':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into stunning ombre gradient effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique`,
+          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays',
+          strength: 0.70,
+          guidance: 15.0,
+          steps: 42,
+          seed: 6006
+        };
+
+      case 'color-block':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into bold color block design, large rectangular sections of ${colorName} ${colorHex} alternating with white blocks, modern minimalist pattern, clean geometric rectangles`,
+          negative_prompt: 'small blocks, irregular shapes, curved edges, traditional patterns, gradients, color bleeding, uneven rectangles, text overlays',
+          strength: 0.82,
+          guidance: 17.5,
+          steps: 47,
+          seed: 7007
+        };
+
+      case 'wainscoting':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into classic wainscoting design, lower third painted ${colorName} ${colorHex}, upper two-thirds white, add traditional chair rail molding, elegant panel details`,
+          negative_prompt: 'wrong proportions, no molding, modern style, uneven division, color bleeding, missing panels, contemporary design, text overlays',
+          strength: 0.77,
+          guidance: 16.5,
+          steps: 44,
+          seed: 8008
+        };
+
+      case 'border':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall by adding elegant decorative border frame, keep ${colorName} ${colorHex} main color, add crisp white border frame around all edges, 6-inch border width`,
+          negative_prompt: 'no border, uneven frame, wrong border size, color bleeding, rough edges, missing frame sections, text overlays',
+          strength: 0.73,
+          guidance: 16.0,
+          steps: 43,
+          seed: 9009
+        };
+
+      case 'textured':
+        return {
+          ...basePayload,
+          prompt: `transform this ${colorName} painted wall into sophisticated textured finish with flowing wave-like texture pattern throughout the entire wall surface, ${colorName} ${colorHex} base color with subtle sponge painting technique creating organic wave formations, elegant depth variation, professional faux finish with gentle undulating waves, three-dimensional texture pattern, soft matte finish`,
+          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns',
+          strength: 0.88,
+          guidance: 18.5,
+          steps: 52,
+          seed: 1010
+        };
+
+      default:
+        return {
+          ...basePayload,
+          prompt: `maintain this ${colorName} ${colorHex} painted wall as is`,
+          negative_prompt: 'changes, modifications, text overlays',
+          strength: 0.3,
+          guidance: 10.0,
+          steps: 20,
+          seed: 420
+        };
+    }
+  }
+
   // Generate pattern-specific payloads with thoughtful optimization for each pattern
   generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, pattern, width, height) {
     const basePayload = {
@@ -364,7 +498,7 @@ class PaintVisualizationService {
   }
 
 
-  // Step 3: Apply paint color (SIMPLIFIED SINGLE-STEP APPROACH)
+  // Step 3: Apply paint color (TWO-STEP BULLETPROOF APPROACH)
   async applyPaintColor(originalImagePath, maskImagePath, colorHex, colorName, pattern = 'plain') {
     try {
       // Check if API key is configured and valid
@@ -377,42 +511,33 @@ class PaintVisualizationService {
         };
       }
 
-      console.log(`Applying paint color with pattern: ${pattern}...`);
+      console.log(`Starting BULLETPROOF two-step process for pattern: ${pattern}...`);
       
-      // Resize images first for API compatibility
-      const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
-
-      // Convert resized images to base64
-      const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
-      const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
-
-      // Remove any data URL prefix (clean base64)
-      const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-      const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-
-      // Generate pattern-specific payload with thoughtful optimization
-      const payload = this.generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, pattern, newWidth, newHeight);
-      console.log(`Using ${pattern} pattern with optimized payload`);
-
-      console.log(`the ${colorName} has ${colorHex}`);
-      console.log(`Sending to getimg.ai: ${newWidth}x${newHeight}`);
-
-      const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
-
-      console.log('getimg.ai API request successful');
-
-      // Clean up temporary resized files
-      try {
-        if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
-        if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
-      } catch (cleanupError) {
-        console.warn('Failed to clean up temp files:', cleanupError.message);
+      // STEP 1: ALWAYS generate plain painted wall first (Your perfect system)
+      console.log('STEP 1: Generating plain painted wall...');
+      const plainResult = await this.generatePlainPaintedWall(originalImagePath, maskImagePath, colorHex, colorName);
+      
+      // If pattern is plain, return the plain result
+      if (pattern === 'plain') {
+        console.log('Pattern is plain - returning plain painted wall');
+        return {
+          url: plainResult.url,
+          originalUrl: plainResult.url,
+          message: 'Plain color visualization successful',
+          plainUrl: plainResult.url  // For frontend reference
+        };
       }
 
+      // STEP 2: Apply pattern to the plain painted wall
+      console.log(`STEP 2: Applying ${pattern} pattern to plain painted wall...`);
+      const patternResult = await this.applyPatternToPlainWall(plainResult.url, colorHex, colorName, pattern);
+
       return {
-        url: response.data.url,
-        originalUrl: response.data.url,
-        message: `${pattern} visualization successful`
+        url: patternResult.url,
+        originalUrl: patternResult.url,
+        message: `${pattern} pattern visualization successful`,
+        plainUrl: plainResult.url,    // Always include plain version
+        patternUrl: patternResult.url // Pattern version
       };
 
     } catch (error) {
@@ -426,6 +551,87 @@ class PaintVisualizationService {
       return {
         url: `/uploads/${path.basename(originalImagePath)}`,
         message: 'API unavailable - showing original image'
+      };
+    }
+  }
+
+  // STEP 1: Generate plain painted wall (Your perfect system - unchanged)
+  async generatePlainPaintedWall(originalImagePath, maskImagePath, colorHex, colorName) {
+    // Resize images first for API compatibility
+    const { resizedImagePath, resizedMaskPath, newWidth, newHeight } = await this.resizeForApi(originalImagePath, maskImagePath);
+
+    // Convert resized images to base64
+    const imageBase64 = fs.readFileSync(resizedImagePath, 'base64');
+    const maskBase64 = fs.readFileSync(resizedMaskPath, 'base64');
+
+    // Remove any data URL prefix (clean base64)
+    const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+
+    // 🎯 ORIGINAL PERFECT PAYLOAD - DO NOT CHANGE!
+    const plainPayload = {
+      model: 'realistic-vision-v5-1-inpainting',
+      image: cleanImage,
+      mask_image: cleanMask,
+      prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
+      negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
+      strength: 0.85,
+      guidance: 12.0,
+      steps: 35,
+      width: newWidth,
+      height: newHeight,
+      output_format: 'jpeg',
+      response_format: 'url',
+      seed: 420
+    };
+
+    console.log(`Sending plain paint request: ${newWidth}x${newHeight}`);
+    const response = await getimgAPI.post('/stable-diffusion/inpaint', plainPayload);
+
+    // Clean up temporary resized files
+    try {
+      if (fs.existsSync(resizedImagePath)) fs.unlinkSync(resizedImagePath);
+      if (fs.existsSync(resizedMaskPath)) fs.unlinkSync(resizedMaskPath);
+    } catch (cleanupError) {
+      console.warn('Failed to clean up temp files:', cleanupError.message);
+    }
+
+    console.log('STEP 1 COMPLETE: Plain painted wall generated successfully');
+    return {
+      url: response.data.url,
+      message: 'Plain paint successful'
+    };
+  }
+
+  // STEP 2: Apply pattern to the already painted wall
+  async applyPatternToPlainWall(plainPaintedImageUrl, colorHex, colorName, pattern) {
+    try {
+      console.log(`Downloading plain painted image from: ${plainPaintedImageUrl}`);
+      
+      // Download the plain painted image
+      const fetch = (await import('node-fetch')).default;
+      const response = await fetch(plainPaintedImageUrl);
+      const imageBuffer = await response.arrayBuffer();
+      const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+
+      // Generate pattern-specific payload for the painted wall
+      const patternPayload = this.generatePatternPayloadForPaintedWall(imageBase64, colorHex, colorName, pattern);
+      
+      console.log(`Applying ${pattern} pattern to painted wall...`);
+      const patternResponse = await getimgAPI.post('/stable-diffusion/inpaint', patternPayload);
+
+      console.log('STEP 2 COMPLETE: Pattern applied successfully');
+      return {
+        url: patternResponse.data.url,
+        message: 'Pattern application successful'
+      };
+
+    } catch (error) {
+      console.error('Pattern application error:', error);
+      console.log('Pattern failed, returning plain painted wall');
+      return {
+        url: plainPaintedImageUrl,
+        message: 'Pattern failed - showing plain version'
       };
     }
   }
