@@ -253,6 +253,12 @@ class PaintVisualizationService {
   async detectWallSurfaces(imagePath) {
     console.log('🚀 Starting multi-model wall detection system...');
     
+    // Get image dimensions for filtering
+    const imageBuffer = fs.readFileSync(imagePath);
+    const imageMetadata = await sharp(imageBuffer).metadata();
+    const { width, height } = imageMetadata;
+    console.log(`📐 Image dimensions: ${width}x${height}`);
+    
     // Define our model configurations
     const models = [
       {
@@ -375,29 +381,33 @@ class PaintVisualizationService {
 
   // Call a specific Roboflow model
   async callRoboflowModel(model, imageData, confidence) {
-    const apiClient = axios.create({
-      baseURL: model.baseURL,
-      timeout: 30000
-    });
-
-    const response = await apiClient.post(
-      model.endpoint,
-      imageData,
-      {
-        params: {
-          api_key: model.apiKey,
-          confidence: confidence,
-          overlap: 0.3,
-          format: 'json'
-        },
-        headers: { 
-          "Content-Type": "application/x-www-form-urlencoded",
-          "User-Agent": "nodejs-roboflow-client"
+    console.log(`🔗 Making API call to: ${model.baseURL}${model.endpoint}`);
+    console.log(`📊 Confidence: ${confidence}, API Key: ${model.apiKey.substring(0, 8)}...`);
+    
+    try {
+      // Use the existing roboflowAPI from config instead of creating new axios instance
+      const response = await roboflowAPI.post(
+        `${model.endpoint}?api_key=${model.apiKey}&confidence=${confidence}&overlap=0.3`,
+        imageData,
+        {
+          headers: { 
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          timeout: 30000
         }
-      }
-    );
+      );
 
-    return response.data;
+      console.log(`✅ API Response received for ${model.name}`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ API Error for ${model.name}:`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
   }
 
   // Check if the result contains valid wall detection
