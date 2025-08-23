@@ -170,89 +170,119 @@ class PaintVisualizationService {
   // Step 1: Detect walls using Roboflow - SIMPLE APPROACH
   async detectWallSurfaces(imagePath) {
     try {
-      // Try Wall-Wasil model first
-      console.log('Detecting walls using Wall-1fzbi model...');
+      // Try Wall-Ceiling-Floor model first (primary - more comprehensive)
+      console.log('Detecting walls using Wall-Ceiling-Floor model...');
       
       const apiKey = 'hqkeI7fba9NgZle7Ju5y';
-      
-      // CRITICAL: Resize image to 640x640 as required by the models
-      const imageBuffer = fs.readFileSync(imagePath);
-      const originalMetadata = await sharp(imageBuffer).metadata();
-      console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
-      
-      const resizedBuffer = await sharp(imageBuffer)
-        .resize(640, 640, { fit: 'fill' })
-        .jpeg({ quality: 90 })
-        .toBuffer();
-      
-      const resizedMetadata = await sharp(resizedBuffer).metadata();
-      console.log(`✅ Resized image: ${resizedMetadata.width}x${resizedMetadata.height}`);
-              console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-1fzbi model`);
-      
-      const image = resizedBuffer.toString('base64');
+      const image = fs.readFileSync(imagePath, { encoding: "base64" });
 
-            const response = await roboflowAPI.post(
-        `/wall-1fzbi/1`,
+      const response = await roboflowAPI.post(
+        `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}&confidence=0.6`,
         image,
         {
-          params: {
-            api_key: apiKey,
-            confidence: 0.3
-          },
           headers: {
             "Content-Type": "application/x-www-form-urlencoded"
           }
         }
       );
 
-      console.log('Wall-1fzbi API request successful');
+      console.log('Wall-Ceiling-Floor API request successful');
       console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
-      return response.data;
-    } catch (error) {
-              console.error('Wall-1fzbi model failed:', error.response?.data || error.message);
       
-      try {
-        // Try Wall-Ceiling-Floor model as backup
-        console.log('Trying Wall-Ceiling-Floor model as backup...');
+      // Check if we have decent wall detections
+      const wallDetections = response.data.predictions?.filter(pred => 
+        pred.class && pred.class.toLowerCase().includes('wall')
+      ) || [];
+      
+      if (wallDetections.length > 0) {
+        console.log(`✅ Found ${wallDetections.length} walls with primary model`);
+        return response.data;
+      } else {
+        console.log('⚠️ No walls found with 60% confidence, trying lower confidence...');
         
-        const apiKey = 'hqkeI7fba9NgZle7Ju5y';
-        
-        // CRITICAL: Resize image to 640x640 as required by the models
-        const imageBuffer = fs.readFileSync(imagePath);
-        const originalMetadata = await sharp(imageBuffer).metadata();
-        console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
-        
-        const resizedBuffer = await sharp(imageBuffer)
-          .resize(640, 640, { fit: 'fill' })
-          .jpeg({ quality: 90 })
-          .toBuffer();
-        
-        const resizedMetadata = await sharp(resizedBuffer).metadata();
-        console.log(`✅ Resized image: ${resizedMetadata.width}x${resizedMetadata.height}`);
-        console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-Ceiling-Floor model`);
-        
-        const image = resizedBuffer.toString('base64');
-
-                const response = await roboflowAPI.post(
-          `/wall-ceiling-floor-m6bao/1`,
+        // Try with lower confidence (30%)
+        const lowConfResponse = await roboflowAPI.post(
+          `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}&confidence=0.3`,
           image,
           {
-            params: {
-              api_key: apiKey,
-              confidence: 0.3
-            },
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded"
+            }
+          }
+        );
+        
+        const lowConfWalls = lowConfResponse.data.predictions?.filter(pred => 
+          pred.class && pred.class.toLowerCase().includes('wall')
+        ) || [];
+        
+        if (lowConfWalls.length > 0) {
+          console.log(`✅ Found ${lowConfWalls.length} walls with 30% confidence`);
+          return lowConfResponse.data;
+        } else {
+          throw new Error('No walls detected even with low confidence');
+        }
+      }
+    } catch (error) {
+      console.error('Wall-Ceiling-Floor model failed:', error.response?.data || error.message);
+      
+      try {
+        // Try Wall-Wasil model as backup
+        console.log('Trying Wall-Wasil model as backup...');
+        
+        const apiKey = 'hqkeI7fba9NgZle7Ju5y';
+        const image = fs.readFileSync(imagePath, { encoding: "base64" });
+
+        const response = await roboflowAPI.post(
+          `/wall-wasil-1/2?api_key=${apiKey}&confidence=0.6`,
+          image,
+          {
             headers: {
               "Content-Type": "application/x-www-form-urlencoded"
             }
           }
         );
 
-        console.log('Wall-Ceiling-Floor API request successful');
+        console.log('Wall-Wasil API request successful');
         console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
-        return response.data;
+        
+        // Check if we have decent wall detections
+        const wallDetections = response.data.predictions?.filter(pred => 
+          pred.class && pred.class.toLowerCase().includes('wall')
+        ) || [];
+        
+        if (wallDetections.length > 0) {
+          console.log(`✅ Found ${wallDetections.length} walls with backup model`);
+          return response.data;
+        } else {
+          console.log('⚠️ No walls found with 60% confidence, trying lower confidence...');
+          
+          // Try with lower confidence (30%)
+          const lowConfResponse = await roboflowAPI.post(
+            `/wall-wasil-1/2?api_key=${apiKey}&confidence=0.3`,
+            image,
+            {
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+              }
+            }
+          );
+          
+          const lowConfWalls = lowConfResponse.data.predictions?.filter(pred => 
+            pred.class && pred.class.toLowerCase().includes('wall')
+          ) || [];
+          
+          if (lowConfWalls.length > 0) {
+            console.log(`✅ Found ${lowConfWalls.length} walls with 30% confidence (backup)`);
+            return lowConfResponse.data;
+          } else {
+            throw new Error('No walls detected even with backup model');
+          }
+        }
       } catch (backupError) {
-        console.error('Both models failed. Wall-Ceiling-Floor error:', backupError.response?.data || backupError.message);
+        console.error('Both models failed. Wall-Wasil error:', backupError.response?.data || backupError.message);
         console.log('Falling back to mock wall detection');
+        
+        // Return mock object detection format
         return {
           predictions: [
             {
