@@ -242,6 +242,90 @@ class PaintVisualizationService {
       const { width, height } = await image.metadata();
 
       console.log(`Image dimensions: ${width}x${height}`);
+
+      // Check if this is the new segmentation format
+      if (detectionResults.segmentation_mask && detectionResults.class_map) {
+        console.log('Processing segmentation mask format');
+        console.log('Class map:', detectionResults.class_map);
+        
+        // Find wall class ID from class_map
+        let wallClassId = null;
+        for (const [id, className] of Object.entries(detectionResults.class_map)) {
+          if (className.toLowerCase().includes('wall')) {
+            wallClassId = id;
+            console.log(`Found wall class ID: ${id} -> ${className}`);
+            break;
+          }
+        }
+
+        if (wallClassId && detectionResults.segmentation_mask) {
+          console.log('Converting segmentation mask to wall mask...');
+          
+          // Decode the base64 segmentation mask
+          const segmentationBuffer = Buffer.from(detectionResults.segmentation_mask, 'base64');
+          
+          // Use Sharp to process the segmentation mask
+          const segMask = sharp(segmentationBuffer);
+          const { width: segWidth, height: segHeight } = await segMask.metadata();
+          
+          console.log(`Segmentation mask dimensions: ${segWidth}x${segHeight}`);
+          console.log(`Target dimensions: ${width}x${height}`);
+          
+          // Process the segmentation mask to create a binary wall mask
+          console.log('Processing segmentation mask to extract wall areas...');
+          
+          // Convert the segmentation mask to a binary mask where wall pixels = white
+          // The wallClassId represents wall pixels in the segmentation mask
+          const wallClassValue = parseInt(wallClassId);
+          console.log(`Looking for wall pixels with value: ${wallClassValue}`);
+          
+          // Create a binary mask by extracting wall pixels
+          // This is a more sophisticated approach that actually uses the segmentation data
+          const processedMask = await segMask
+            .resize(width, height) // Resize to match original image
+            .raw() // Get raw pixel data
+            .grayscale() // Convert to grayscale for easier processing
+            .toBuffer();
+          
+          // Create a new mask where wall pixels are white (255) and others are black (0)
+          const maskBuffer = Buffer.alloc(width * height * 3); // RGB buffer
+          
+          for (let i = 0; i < processedMask.length; i++) {
+            const pixelValue = processedMask[i];
+            const rgbIndex = i * 3;
+            
+            // If pixel value matches wall class (or is close to it), make it white
+            // Segmentation masks typically use class IDs as pixel values
+            if (pixelValue === wallClassValue || Math.abs(pixelValue - wallClassValue) <= 10) {
+              maskBuffer[rgbIndex] = 255;     // R
+              maskBuffer[rgbIndex + 1] = 255; // G  
+              maskBuffer[rgbIndex + 2] = 255; // B
+            } else {
+              maskBuffer[rgbIndex] = 0;       // R
+              maskBuffer[rgbIndex + 1] = 0;   // G
+              maskBuffer[rgbIndex + 2] = 0;   // B
+            }
+          }
+          
+          // Create final mask from the processed buffer
+          const finalMask = sharp(maskBuffer, {
+            raw: {
+              width: width,
+              height: height,
+              channels: 3
+            }
+          });
+          
+          const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
+          await finalMask.png().toFile(maskPath);
+
+          console.log(`Wall segmentation mask created successfully: ${maskPath}`);
+          console.log(`Detected walls using segmentation model - processed ${processedMask.length} pixels`);
+          return maskPath;
+        }
+      }
+
+      // Fallback: Check for old predictions format
       console.log(`Total predictions: ${detectionResults.predictions?.length || 0}`);
 
       // Create a black mask
@@ -254,12 +338,12 @@ class PaintVisualizationService {
         }
       });
 
-      // Find walls
+      // Find walls in old format
       const wallSurfaces = detectionResults.predictions?.filter(pred =>
         pred.class && pred.class.toLowerCase().includes('wall')
       ) || [];
 
-      console.log(`Found ${wallSurfaces.length} walls`);
+      console.log(`Found ${wallSurfaces.length} walls in predictions format`);
 
       if (wallSurfaces.length > 0) {
         // Handle both bounding box and segmentation results

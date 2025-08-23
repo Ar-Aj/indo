@@ -42,6 +42,34 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Helper function to count detected walls from both old and new formats
+function countDetectedWalls(detectionResults) {
+  // New segmentation format
+  if (detectionResults.segmentation_mask && detectionResults.class_map) {
+    // Check if wall class exists in class_map
+    for (const [id, className] of Object.entries(detectionResults.class_map)) {
+      if (className.toLowerCase().includes('wall')) {
+        return 1; // Segmentation detected walls
+      }
+    }
+    return 0;
+  }
+  
+  // Old predictions format
+  return detectionResults.predictions?.filter(p => p.class && p.class.toLowerCase().includes('wall')).length || 0;
+}
+
+// Helper function to count detected surfaces from both old and new formats  
+function countDetectedSurfaces(detectionResults) {
+  // New segmentation format
+  if (detectionResults.segmentation_mask && detectionResults.class_map) {
+    return Object.keys(detectionResults.class_map).length - 1; // Exclude background
+  }
+  
+  // Old predictions format
+  return detectionResults.predictions?.length || 0;
+}
+
 // PROTECTED: Process paint visualization
 router.post('/process', authenticate, upload.single('image'), async (req, res) => {
   try {
@@ -146,8 +174,8 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         recommendations: recommendations,
         maskingMethod: maskingMethod,
         pattern: pattern || 'plain',
-        detectedWalls: detectionResults.predictions?.filter(p => p.class.toLowerCase() === 'wall').length || 0,
-        detectedSurfaces: detectionResults.predictions?.length || 0,
+        detectedWalls: countDetectedWalls(detectionResults),
+        detectedSurfaces: countDetectedSurfaces(detectionResults),
         isManualMask: maskingMethod === 'manual',
         hasBothVersions: !!(paintResult.plainUrl && paintResult.patternUrl) // Boolean flag for frontend
       }
