@@ -167,6 +167,8 @@ class PaintVisualizationService {
 
 
 
+
+
   // Step 1: Detect walls using Roboflow - SIMPLE APPROACH
   async detectWallSurfaces(imagePath) {
     try {
@@ -521,11 +523,11 @@ class PaintVisualizationService {
       model: 'realistic-vision-v5-1-inpainting',
       image: cleanImage,
       mask_image: cleanMask,
-      prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
-      negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
-      strength: 0.99,
-      guidance: 12.0,
-      steps: 35,
+      prompt: `paint this wall  ${colorName} color ${colorHex}, solid paint coverage, change wall color completely`,
+      negative_prompt: 'keep original color, no color change, same wall color, furniture, objects, people, text, architectural changes',
+      strength: 0.75,
+      guidance: 20.0,
+      steps: 40,
       width: newWidth,
       height: newHeight,
       output_format: 'jpeg',
