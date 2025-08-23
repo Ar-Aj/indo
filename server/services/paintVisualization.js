@@ -267,14 +267,14 @@ class PaintVisualizationService {
           
           console.log(`Found wall class ID: ${wallClassId} in segmentation results`);
           
-          // Create a simple grayscale mask (not RGB) for inpainting
+          // Create a RGB mask first, then convert to grayscale for inpainting
           // Focus on likely wall areas based on typical room layouts
           let mask = sharp({
             create: {
               width,
               height,
-              channels: 1, // GRAYSCALE for inpainting
-              background: 0 // Black background
+              channels: 3, // RGB first
+              background: { r: 0, g: 0, b: 0 } // Black background
             }
           });
 
@@ -287,8 +287,8 @@ class PaintVisualizationService {
                 create: {
                   width: Math.round(width * 0.35),
                   height: Math.round(height * 0.6),
-                  channels: 1,
-                  background: 255 // White for mask areas
+                  channels: 3,
+                  background: { r: 255, g: 255, b: 255 } // White for mask areas
                 }
               },
               top: Math.round(height * 0.15),
@@ -300,8 +300,8 @@ class PaintVisualizationService {
                 create: {
                   width: Math.round(width * 0.25),
                   height: Math.round(height * 0.45),
-                  channels: 1,
-                  background: 255
+                  channels: 3,
+                  background: { r: 255, g: 255, b: 255 }
                 }
               },
               top: Math.round(height * 0.2),
@@ -309,7 +309,7 @@ class PaintVisualizationService {
             }
           ];
 
-          mask = mask.composite(wallAreas);
+          mask = mask.composite(wallAreas).grayscale(); // Convert to grayscale after compositing
           const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
           await mask.png().toFile(maskPath);
 
@@ -322,13 +322,13 @@ class PaintVisualizationService {
       // Fallback: Check for old predictions format
       console.log(`Total predictions: ${detectionResults.predictions?.length || 0}`);
 
-      // Create a black grayscale mask for inpainting
+      // Create a black RGB mask, convert to grayscale later
       let mask = sharp({
         create: {
           width,
           height,
-          channels: 1, // Grayscale for inpainting
-          background: 0 // Black background
+          channels: 3, // RGB first
+          background: { r: 0, g: 0, b: 0 } // Black background
         }
       });
 
@@ -354,8 +354,8 @@ class PaintVisualizationService {
                 create: {
                   width: Math.round(wall.width),
                   height: Math.round(wall.height),
-                  channels: 1, // Grayscale
-                  background: 255 // White for mask areas
+                  channels: 3, // RGB
+                  background: { r: 255, g: 255, b: 255 } // White for mask areas
                 }
               },
               top: Math.max(0, y),
@@ -378,8 +378,8 @@ class PaintVisualizationService {
                 create: {
                   width: maskWidth,
                   height: maskHeight,
-                  channels: 1, // Grayscale
-                  background: 255 // White for mask areas
+                  channels: 3, // RGB
+                  background: { r: 255, g: 255, b: 255 } // White for mask areas
                 }
               },
               top: maskY,
@@ -403,8 +403,8 @@ class PaintVisualizationService {
             create: {
               width: defaultWidth,
               height: defaultHeight,
-              channels: 1, // Grayscale
-              background: 255 // White for mask areas
+              channels: 3, // RGB
+              background: { r: 255, g: 255, b: 255 } // White for mask areas
             }
           },
           top: defaultY,
@@ -412,6 +412,9 @@ class PaintVisualizationService {
         }]);
       }
 
+      // Convert to grayscale for inpainting
+      mask = mask.grayscale();
+      
       const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
       await mask.png().toFile(maskPath);
 
