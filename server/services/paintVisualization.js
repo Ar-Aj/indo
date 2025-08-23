@@ -12,38 +12,146 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate enhanced prompts that work better with inpainting for patterns
-  generatePatternInpaintingPrompt(colorHex, colorName, pattern) {
-    const baseColorDesc = `${colorName} ${colorHex}`;
-    
-    const patternPrompts = {
-      'plain': `wall painted with exact ${baseColorDesc}, solid uniform flat color, matte finish, precise color match, no patterns or texture`,
-      
-      'accent-wall': `room interior with one feature accent wall painted ${baseColorDesc}, other walls neutral cream, focal wall design, realistic lighting`,
-      
-      'two-tone': `room interior wall with two-tone paint design, lower section ${baseColorDesc}, upper section white, chair rail molding, traditional style`,
-      
-      'vertical-stripes': `wall painted with ${baseColorDesc} and white vertical stripes pattern, alternating stripes, each stripe 4 inches wide, classic striped design`,
-      
-      'horizontal-stripes': `wall painted with ${baseColorDesc} and white horizontal stripes, alternating horizontal bands, nautical stripe pattern`,
-      
-      'geometric': `wall with geometric pattern using ${baseColorDesc} and white, triangular geometric design, modern pattern`,
-      
-      'ombre': `wall with ombre gradient effect, ${baseColorDesc} at bottom fading to white at top, smooth gradient transition`,
-      
-      'color-block': `wall with color block pattern, large ${baseColorDesc} rectangular sections alternating with white blocks`,
-      
-      'wainscoting': `wall with wainscoting design, lower third painted ${baseColorDesc}, upper wall white, chair rail molding`,
-      
-      'border': `wall painted ${baseColorDesc} with white decorative border frame around the edges`,
-      
-      'textured': `wall painted ${baseColorDesc} with subtle textured finish, sponge paint technique, textured surface`
+  // Generate pattern-specific payloads with thoughtful optimization for each pattern
+  generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, pattern, width, height) {
+    const basePayload = {
+      model: 'realistic-vision-v5-1-inpainting',
+      image: cleanImage,
+      mask_image: cleanMask,
+      width: width,
+      height: height,
+      output_format: 'jpeg',
+      response_format: 'url'
     };
 
-    return patternPrompts[pattern] || patternPrompts['plain'];
-  }
+    switch (pattern) {
+      case 'plain':
+        // 🎯 ORIGINAL PERFECT PAYLOAD - DO NOT CHANGE!
+        return {
+          ...basePayload,
+          prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
+          negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
+          strength: 0.85,
+          guidance: 12.0,
+          steps: 35,
+          seed: 420
+        };
 
-  // Generate prompts for pattern overlay on painted walls
+      case 'accent-wall':
+        return {
+          ...basePayload,
+          prompt: `interior room with one dramatic accent wall painted in rich ${colorName} ${colorHex}, other walls neutral off-white, feature wall focal point, professional interior design, realistic lighting, modern residential style`,
+          negative_prompt: 'all walls same color, uniform color, no accent, poor contrast, wrong wall selection, text overlays, unrealistic colors, furniture changes, architectural modifications, people, objects',
+          strength: 0.82,
+          guidance: 14.0,
+          steps: 40,
+          seed: 1001
+        };
+
+      case 'two-tone':
+        return {
+          ...basePayload,
+          prompt: `elegant two-tone wall design, lower section painted ${colorName} ${colorHex}, upper section crisp white, horizontal division with classic chair rail molding at 36 inches, traditional wainscoting style, perfect paint line separation`,
+          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, color bleeding, messy edges, modern style, gradient, ombre effect, text, objects, furniture',
+          strength: 0.88,
+          guidance: 16.0,
+          steps: 45,
+          seed: 2002
+        };
+
+      case 'vertical-stripes':
+        return {
+          ...basePayload,
+          prompt: `classic vertical striped wall, alternating ${colorName} ${colorHex} and crisp white vertical stripes, each stripe exactly 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
+          negative_prompt: 'horizontal stripes, uneven widths, crooked lines, wavy stripes, diagonal patterns, color variations, blurred edges, modern geometric, text overlays, furniture changes',
+          strength: 0.92,
+          guidance: 18.0,
+          steps: 50,
+          seed: 3003
+        };
+
+      case 'horizontal-stripes':
+        return {
+          ...basePayload,
+          prompt: `nautical horizontal striped wall, alternating ${colorName} ${colorHex} and white horizontal bands, each stripe 6 inches tall, perfectly straight horizontal lines, coastal interior design, crisp paint edges`,
+          negative_prompt: 'vertical stripes, uneven heights, tilted lines, wavy bands, wrong stripe sizes, color bleeding, rough edges, diagonal patterns, text, objects, architectural changes',
+          strength: 0.90,
+          guidance: 17.0,
+          steps: 48,
+          seed: 4004
+        };
+
+      case 'geometric':
+        return {
+          ...basePayload,
+          prompt: `modern geometric wall pattern, ${colorName} ${colorHex} triangular shapes on white background, contemporary art deco design, clean geometric forms, symmetrical pattern, sharp angular edges, sophisticated interior`,
+          negative_prompt: 'organic shapes, curved lines, random patterns, traditional designs, floral motifs, uneven geometry, color gradients, soft edges, text overlays, furniture, people',
+          strength: 0.94,
+          guidance: 19.0,
+          steps: 55,
+          seed: 5005
+        };
+
+      case 'ombre':
+        return {
+          ...basePayload,
+          prompt: `stunning ombre gradient wall effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique, subtle blending, elegant fade effect`,
+          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays, objects, furniture changes',
+          strength: 0.86,
+          guidance: 15.0,
+          steps: 42,
+          seed: 6006
+        };
+
+      case 'color-block':
+        return {
+          ...basePayload,
+          prompt: `bold color block wall design, large rectangular sections of ${colorName} ${colorHex} alternating with white blocks, modern minimalist pattern, clean geometric rectangles, contemporary art inspired, precise edges`,
+          negative_prompt: 'small blocks, irregular shapes, curved edges, traditional patterns, gradients, color bleeding, uneven rectangles, diagonal blocks, text, furniture, people, objects',
+          strength: 0.91,
+          guidance: 17.5,
+          steps: 47,
+          seed: 7007
+        };
+
+      case 'wainscoting':
+        return {
+          ...basePayload,
+          prompt: `classic wainscoting design, lower third of wall painted ${colorName} ${colorHex}, upper two-thirds white, traditional chair rail molding, elegant panel details, formal dining room style, precise paint lines`,
+          negative_prompt: 'wrong proportions, no molding, modern style, uneven division, color bleeding, missing panels, contemporary design, gradient effects, text overlays, furniture changes',
+          strength: 0.87,
+          guidance: 16.5,
+          steps: 44,
+          seed: 8008
+        };
+
+      case 'border':
+        return {
+          ...basePayload,
+          prompt: `elegant wall with decorative border frame, ${colorName} ${colorHex} main wall color with crisp white border frame around all edges, 6-inch border width, picture frame effect, sophisticated interior design`,
+          negative_prompt: 'no border, uneven frame, wrong border size, color bleeding, rough edges, modern geometric, missing frame sections, text overlays, furniture, architectural changes',
+          strength: 0.89,
+          guidance: 16.0,
+          steps: 43,
+          seed: 9009
+        };
+
+      case 'textured':
+        return {
+          ...basePayload,
+          prompt: `sophisticated textured wall finish, ${colorName} ${colorHex} with subtle sponge painting technique, elegant texture variation, professional faux finish, organic texture pattern, depth and dimension, matte finish`,
+          negative_prompt: 'flat surface, no texture, glossy finish, harsh texture, wrong technique, color variations, uneven application, rough texture, text overlays, objects, furniture changes',
+          strength: 0.93,
+          guidance: 18.5,
+          steps: 52,
+          seed: 1010
+        };
+
+      default:
+        // Fallback to plain if pattern not recognized
+        return this.generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, 'plain', width, height);
+    }
+  }
 
 
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
@@ -282,31 +390,12 @@ class PaintVisualizationService {
       const cleanImage = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
       const cleanMask = maskBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // Generate pattern-specific prompt
-      const patternPrompt = this.generatePatternInpaintingPrompt(colorHex, colorName, pattern);
-      console.log(`Using pattern prompt for ${pattern}: ${patternPrompt}`);
+      // Generate pattern-specific payload with thoughtful optimization
+      const payload = this.generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, pattern, newWidth, newHeight);
+      console.log(`Using ${pattern} pattern with optimized payload`);
 
       console.log(`the ${colorName} has ${colorHex}`);
       console.log(`Sending to getimg.ai: ${newWidth}x${newHeight}`);
-
-      // Single API call with pattern-specific prompt and parameters
-      const payload = {
-        model: 'realistic-vision-v5-1-inpainting',
-        image: cleanImage,
-        mask_image: cleanMask,
-        prompt: patternPrompt,
-        negative_prompt: pattern === 'plain' 
-          ? 'wrong color, color shift, color variations, oversaturated, undersaturated, glossy finish, texture, patterns, shadows on paint, color bleeding, uneven coverage, blurry, low quality, artifacts, color gradients, off-color'
-          : 'text overlays, watermarks, labels, words, letters, wrong colors, unrealistic lighting, blurry, low quality, distorted, people, extra furniture, new objects, poor pattern execution',
-        strength: pattern === 'plain' ? 0.85 : 0.95,  // Higher strength for patterns
-        guidance: pattern === 'plain' ? 12.0 : 18.0,  // Higher guidance for patterns
-        steps: pattern === 'plain' ? 35 : 50,         // More steps for patterns
-        width: newWidth,
-        height: newHeight,
-        output_format: 'jpeg',
-        response_format: 'url',
-        seed: 420
-      };
 
       const response = await getimgAPI.post('/stable-diffusion/inpaint', payload);
 
