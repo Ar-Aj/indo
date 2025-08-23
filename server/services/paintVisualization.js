@@ -177,10 +177,18 @@ class PaintVisualizationService {
       
       // CRITICAL: Resize image to 640x640 as required by the models
       const imageBuffer = fs.readFileSync(imagePath);
+      const originalMetadata = await sharp(imageBuffer).metadata();
+      console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
+      
       const resizedBuffer = await sharp(imageBuffer)
         .resize(640, 640)
         .jpeg({ quality: 90 })
         .toBuffer();
+      
+      const resizedMetadata = await sharp(resizedBuffer).metadata();
+      console.log(`✅ Resized image: ${resizedMetadata.width}x${resizedMetadata.height}`);
+      console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-Wasil model`);
+      
       const image = resizedBuffer.toString('base64');
 
       const response = await roboflowAPI.post(
@@ -207,10 +215,18 @@ class PaintVisualizationService {
         
         // CRITICAL: Resize image to 640x640 as required by the models
         const imageBuffer = fs.readFileSync(imagePath);
+        const originalMetadata = await sharp(imageBuffer).metadata();
+        console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
+        
         const resizedBuffer = await sharp(imageBuffer)
           .resize(640, 640)
           .jpeg({ quality: 90 })
           .toBuffer();
+        
+        const resizedMetadata = await sharp(resizedBuffer).metadata();
+        console.log(`✅ Resized image: ${resizedMetadata.width}x${resizedMetadata.height}`);
+        console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-Ceiling-Floor model`);
+        
         const image = resizedBuffer.toString('base64');
 
         const response = await roboflowAPI.post(
