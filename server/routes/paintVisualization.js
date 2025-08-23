@@ -42,6 +42,34 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Helper function to count detected walls from both old and new formats
+function countDetectedWalls(detectionResults) {
+  // New segmentation format
+  if (detectionResults.segmentation_mask && detectionResults.class_map) {
+    // Check if wall class exists in class_map
+    for (const [id, className] of Object.entries(detectionResults.class_map)) {
+      if (className.toLowerCase().includes('wall')) {
+        return 1; // Segmentation detected walls
+      }
+    }
+    return 0;
+  }
+  
+  // Old predictions format
+  return detectionResults.predictions?.filter(p => p.class && p.class.toLowerCase().includes('wall')).length || 0;
+}
+
+// Helper function to count detected surfaces from both old and new formats  
+function countDetectedSurfaces(detectionResults) {
+  // New segmentation format
+  if (detectionResults.segmentation_mask && detectionResults.class_map) {
+    return Object.keys(detectionResults.class_map).length - 1; // Exclude background
+  }
+  
+  // Old predictions format
+  return detectionResults.predictions?.length || 0;
+}
+
 // PROTECTED: Process paint visualization
 router.post('/process', authenticate, upload.single('image'), async (req, res) => {
   try {
@@ -146,8 +174,8 @@ router.post('/process', authenticate, upload.single('image'), async (req, res) =
         recommendations: recommendations,
         maskingMethod: maskingMethod,
         pattern: pattern || 'plain',
-        detectedWalls: detectionResults.predictions?.filter(p => p.class.toLowerCase() === 'wall').length || 0,
-        detectedSurfaces: detectionResults.predictions?.length || 0,
+        detectedWalls: countDetectedWalls(detectionResults),
+        detectedSurfaces: countDetectedSurfaces(detectionResults),
         isManualMask: maskingMethod === 'manual',
         hasBothVersions: !!(paintResult.plainUrl && paintResult.patternUrl) // Boolean flag for frontend
       }
@@ -226,6 +254,82 @@ router.get('/brands', async (req, res) => {
   } catch (error) {
     console.error('Get brands error:', error);
     res.status(500).json({ error: 'Failed to fetch brands' });
+  }
+});
+
+// 🧪 CONFIDENCE TESTING ENDPOINTS
+// Test specific confidence level
+router.post('/test-confidence', authenticate, upload.single('image'), async (req, res) => {
+  try {
+    const { modelName, confidence } = req.body;
+    const imagePath = req.file.path;
+    
+    if (!modelName || !confidence) {
+      return res.status(400).json({ error: 'modelName and confidence are required' });
+    }
+    
+    const confidenceNum = parseFloat(confidence);
+    if (confidenceNum < 0 || confidenceNum > 1) {
+      return res.status(400).json({ error: 'confidence must be between 0 and 1' });
+    }
+    
+    console.log(`🧪 Testing confidence: ${modelName} at ${(confidenceNum * 100)}%`);
+    
+    const result = await paintService.testSpecificConfidence(imagePath, modelName, confidenceNum);
+    
+    res.json({
+      success: true,
+      model: modelName,
+      confidence: confidenceNum,
+      wallsDetected: paintService.countWalls(result),
+      detectionResults: result
+    });
+    
+  } catch (error) {
+    console.error('Confidence test error:', error);
+    res.status(500).json({ 
+      error: 'Confidence test failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Update confidence configuration
+router.post('/update-confidence-config', authenticate, async (req, res) => {
+  try {
+    const newConfig = req.body;
+    
+    console.log('🎛️ Updating confidence configuration:', newConfig);
+    paintService.updateConfidenceConfig(newConfig);
+    
+    res.json({
+      success: true,
+      message: 'Confidence configuration updated',
+      currentConfig: paintService.confidenceConfig
+    });
+    
+  } catch (error) {
+    console.error('Config update error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update configuration', 
+      details: error.message 
+    });
+  }
+});
+
+// Get current confidence configuration
+router.get('/confidence-config', authenticate, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      config: paintService.confidenceConfig
+    });
+  } catch (error) {
+    console.error('Get config error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get configuration', 
+      details: error.message 
+    });
   }
 });
 
