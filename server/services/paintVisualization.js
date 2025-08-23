@@ -13,89 +13,7 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
   
-  constructor() {
-    // 🎛️ CONFIDENCE CONFIGURATION - EASILY ADJUSTABLE
-    this.confidenceConfig = {
-      // Primary confidence levels to try for each model
-      primaryConfidence: 0.3,    // 30% - Lower for better coverage
-      fallbackConfidence: 0.15,  // 15% - Very low for maximum detection
-      
-      // Model-specific overrides (optional)
-      modelOverrides: {
-        'wall-wasil-1': {
-          primaryConfidence: 0.25,   // 25% for Wall-Wasil model
-          fallbackConfidence: 0.1    // 10% fallback
-        },
-        'wall-ceiling-floor-m6bao': {
-          primaryConfidence: 0.35,   // 35% for Wall-Ceiling-Floor model  
-          fallbackConfidence: 0.2    // 20% fallback
-        }
-      },
-      
-      // Overlap threshold (affects how overlapping detections are handled)
-      overlapThreshold: 0.5,  // 50% overlap
-      
-      // Minimum area threshold (to filter out tiny detections)
-      minAreaThreshold: 0.01,  // 1% of image area minimum
-      
-      // Enable/disable specific models for testing
-      enabledModels: {
-        'wall-wasil-1': true,
-        'wall-ceiling-floor-m6bao': true
-      }
-    };
-  }
 
-  // 🔧 METHOD TO UPDATE CONFIDENCE SETTINGS
-  updateConfidenceConfig(newConfig) {
-    this.confidenceConfig = { ...this.confidenceConfig, ...newConfig };
-    console.log('🎛️ Updated confidence configuration:', this.confidenceConfig);
-  }
-
-  // 🔧 METHOD TO TEST SPECIFIC CONFIDENCE LEVEL
-  async testSpecificConfidence(imagePath, modelName, confidence) {
-    console.log(`🧪 TESTING: ${modelName} at ${(confidence * 100)}% confidence`);
-    
-    const models = [
-      {
-        name: 'Wall-Wasil Model',
-        endpoint: '/wall-wasil-1/2',
-        apiKey: 'hqkeI7fba9NgZle7Ju5y',
-        baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection',
-        modelId: 'wall-wasil-1'
-      },
-      {
-        name: 'Wall-Ceiling-Floor Model', 
-        endpoint: '/wall-ceiling-floor-m6bao/1',
-        apiKey: 'hqkeI7fba9NgZle7Ju5y',
-        baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection',
-        modelId: 'wall-ceiling-floor-m6bao'
-      }
-    ];
-
-    const model = models.find(m => m.modelId === modelName);
-    if (!model) {
-      throw new Error(`Model ${modelName} not found`);
-    }
-
-    const processedImageData = await this.preprocessImageForRoboflow(imagePath);
-    const result = await this.callRoboflowModel(model, processedImageData, confidence);
-    
-    console.log(`📊 Test Results for ${modelName} at ${(confidence * 100)}%:`);
-    console.log(`   Walls detected: ${this.countWalls(result)}`);
-    if (result.predictions) {
-      result.predictions.forEach((pred, i) => {
-        if (pred.class && pred.class.toLowerCase().includes('wall')) {
-          const area = pred.width * pred.height;
-          console.log(`   Wall ${i + 1}: ${Math.round(pred.width)}x${Math.round(pred.height)} (${area.toFixed(0)} px²) - ${(pred.confidence * 100).toFixed(1)}% confidence`);
-        }
-      });
-    }
-    
-    return result;
-  }
 
   // Generate pattern inpainting payloads using SDXL inpainting with mask (STEP 2)
   generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
@@ -249,411 +167,68 @@ class PaintVisualizationService {
 
 
 
-  // Step 1: Multi-model wall detection with fallback system
+  // Step 1: Detect walls using Roboflow - SIMPLE APPROACH
   async detectWallSurfaces(imagePath) {
-    console.log('🚀 Starting multi-model wall detection system...');
-    
-    // Get image dimensions for filtering
-    const imageBuffer = fs.readFileSync(imagePath);
-    const imageMetadata = await sharp(imageBuffer).metadata();
-    const { width, height } = imageMetadata;
-    console.log(`📐 Image dimensions: ${width}x${height}`);
-    
-    // Define our model configurations
-    const models = [
-      {
-        name: 'Wall-Wasil Model',
-        endpoint: '/wall-wasil-1/2',
-        apiKey: 'hqkeI7fba9NgZle7Ju5y',
-        baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection',
-        modelId: 'wall-wasil-1'
-      },
-      {
-        name: 'Wall-Ceiling-Floor Model', 
-        endpoint: '/wall-ceiling-floor-m6bao/1',
-        apiKey: 'hqkeI7fba9NgZle7Ju5y',
-        baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection',
-        modelId: 'wall-ceiling-floor-m6bao'
-      }
-    ];
-
-    // Get confidence thresholds from configuration
-    console.log('🎛️ Using confidence configuration:', this.confidenceConfig);
-
-    // Preprocess image once for all models
-    const processedImageData = await this.preprocessImageForRoboflow(imagePath);
-    
-         // Try each model with configured confidence thresholds
-     for (const model of models) {
-       // Check if model is enabled
-       if (!this.confidenceConfig.enabledModels[model.modelId]) {
-         console.log(`⏭️ Skipping disabled model: ${model.name}`);
-         continue;
-       }
-
-       console.log(`\n📡 Trying ${model.name}...`);
-       
-       // Get confidence levels for this model
-       const modelConfig = this.confidenceConfig.modelOverrides[model.modelId] || this.confidenceConfig;
-       const confidenceThresholds = [modelConfig.primaryConfidence, modelConfig.fallbackConfidence];
-       
-       for (const confidence of confidenceThresholds) {
-         console.log(`  🎯 Testing with ${(confidence * 100)}% confidence...`);
-         
-         try {
-           const result = await this.callRoboflowModel(model, processedImageData, confidence);
-           
-           // Filter results based on area threshold
-           const filteredResult = this.filterSmallDetections(result, width, height);
-           
-           if (this.hasValidWallDetection(filteredResult)) {
-             console.log(`✅ SUCCESS: ${model.name} detected walls at ${(confidence * 100)}% confidence!`);
-             console.log(`   Found ${this.countWalls(filteredResult)} wall(s) after filtering`);
-             this.logDetectionDetails(filteredResult);
-             return filteredResult;
-           } else {
-             console.log(`  ❌ No valid walls detected at ${(confidence * 100)}% confidence`);
-           }
-           
-         } catch (error) {
-           console.log(`  ⚠️ Error with ${model.name} at ${(confidence * 100)}%:`, error.message);
-         }
-       }
-     }
-
-    // If all models fail, return mock data with clear fallback flag
-    console.log('\n🔄 All models failed, using fallback mock detection');
-    console.log('🚨 WARNING: Using mock data - this will create dummy masks!');
-    return {
-      predictions: [
-        {
-          class: 'wall',
-          x: 300,
-          y: 200,
-          width: 400,
-          height: 300,
-          confidence: 0.92
-        }
-      ],
-      fallback: true,
-      isApiFailure: true
-    };
-  }
-
-  // Preprocess image for optimal Roboflow compatibility
-  async preprocessImageForRoboflow(imagePath) {
-    console.log('🔧 Preprocessing image for Roboflow models...');
-    
-    const imageBuffer = fs.readFileSync(imagePath);
-    let processedImage = sharp(imageBuffer);
-    
-    // Get original metadata
-    const metadata = await processedImage.metadata();
-    console.log(`   Original: ${metadata.width}x${metadata.height}, channels: ${metadata.channels}`);
-    
-    // Apply auto-orientation (removes EXIF issues)
-    processedImage = processedImage.rotate();
-    
-    // Ensure RGB format
-    if (metadata.channels > 3) {
-      processedImage = processedImage.removeAlpha();
-    }
-    
-    // CRITICAL FIX: Resize to 640x640 as expected by the models
-    console.log('   🎯 Resizing to 640x640 for Roboflow model compatibility...');
-    processedImage = processedImage.resize(640, 640, {
-      fit: 'fill',  // Fill the entire 640x640 space
-      background: { r: 0, g: 0, b: 0 }
-    });
-    
-    // Convert to high-quality JPEG
-    const processedBuffer = await processedImage.jpeg({ quality: 95 }).toBuffer();
-    const base64Image = processedBuffer.toString('base64');
-    
-    console.log(`   ✅ Processed to 640x640: ${processedBuffer.length} bytes`);
-    return base64Image;
-  }
-
-  // Call a specific Roboflow model - SIMPLIFIED APPROACH
-  async callRoboflowModel(model, imageData, confidence) {
-    console.log(`🔗 Calling ${model.name} with ${(confidence * 100)}% confidence...`);
-    
     try {
+      // Try Wall-Wasil model first
+      console.log('Detecting walls using Wall-Wasil model...');
+      
+      const apiKey = 'hqkeI7fba9NgZle7Ju5y';
+      const image = fs.readFileSync(imagePath, { encoding: "base64" });
+
       const response = await roboflowAPI.post(
-        `${model.endpoint}?api_key=${model.apiKey}&confidence=${confidence}`,
-        imageData,
+        `/wall-wasil-1/2?api_key=${apiKey}&confidence=0.3`,
+        image,
         {
           headers: { 
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded" 
           }
         }
       );
 
-      console.log(`✅ ${model.name} responded successfully`);
+      console.log('Wall-Wasil API request successful');
+      console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
-      console.error(`❌ ${model.name} failed:`, error.response?.data || error.message);
-      throw error;
-    }
-  }
-
-  // Check if the result contains valid wall detection
-  hasValidWallDetection(result) {
-    if (!result) return false;
-    
-    // Check for object detection format (predictions array)
-    if (result.predictions && Array.isArray(result.predictions)) {
-      const walls = result.predictions.filter(pred => 
-        pred.class && pred.class.toLowerCase().includes('wall')
-      );
-      return walls.length > 0;
-    }
-    
-    // Check for segmentation format (segmentation_mask + class_map)
-    if (result.segmentation_mask && result.class_map) {
-      for (const [id, className] of Object.entries(result.class_map)) {
-        if (className.toLowerCase().includes('wall')) {
-          return true;
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  // Count detected walls
-  countWalls(result) {
-    if (result.predictions && Array.isArray(result.predictions)) {
-      return result.predictions.filter(pred => 
-        pred.class && pred.class.toLowerCase().includes('wall')
-      ).length;
-    }
-    
-    if (result.segmentation_mask && result.class_map) {
-      let wallClasses = 0;
-      for (const [id, className] of Object.entries(result.class_map)) {
-        if (className.toLowerCase().includes('wall')) {
-          wallClasses++;
-        }
-      }
-      return wallClasses > 0 ? 1 : 0; // Segmentation = 1 wall area
-    }
-    
-    return 0;
-  }
-
-  // Filter out small detections based on area threshold
-  filterSmallDetections(result, imageWidth, imageHeight) {
-    if (!result || !result.predictions) return result;
-
-    const totalImageArea = imageWidth * imageHeight;
-    const minArea = totalImageArea * this.confidenceConfig.minAreaThreshold;
-
-    console.log(`🔍 Filtering detections smaller than ${(this.confidenceConfig.minAreaThreshold * 100).toFixed(1)}% of image area (${minArea.toFixed(0)} px²)`);
-
-    const filteredPredictions = result.predictions.filter(pred => {
-      if (pred.class && pred.class.toLowerCase().includes('wall')) {
-        const area = pred.width * pred.height;
-        const isLargeEnough = area >= minArea;
-        
-        if (!isLargeEnough) {
-          console.log(`   Filtered out small wall: ${Math.round(pred.width)}x${Math.round(pred.height)} (${area.toFixed(0)} px²)`);
-        }
-        
-        return isLargeEnough;
-      }
-      return true; // Keep non-wall predictions
-    });
-
-    return {
-      ...result,
-      predictions: filteredPredictions
-    };
-  }
-
-  // Log detailed information about detections
-  logDetectionDetails(result) {
-    if (!result || !result.predictions) return;
-
-    const walls = result.predictions.filter(pred => 
-      pred.class && pred.class.toLowerCase().includes('wall')
-    );
-
-    if (walls.length > 0) {
-      console.log(`📏 Detection Details:`);
-      walls.forEach((wall, i) => {
-        const area = wall.width * wall.height;
-        const confidence = (wall.confidence * 100).toFixed(1);
-        console.log(`   Wall ${i + 1}: ${Math.round(wall.width)}x${Math.round(wall.height)} px (${area.toFixed(0)} px²) at (${Math.round(wall.x)}, ${Math.round(wall.y)}) - ${confidence}% confidence`);
-      });
-    }
-  }
-
-  // Create mask from segmentation results
-  async createMaskFromSegmentation(detectionResults, width, height) {
-    console.log('🔍 Processing segmentation mask...');
-    console.log('Class map:', detectionResults.class_map);
-    
-    // Find wall class ID
-    let wallClassId = null;
-    for (const [id, className] of Object.entries(detectionResults.class_map)) {
-      if (className.toLowerCase().includes('wall')) {
-        wallClassId = id;
-        console.log(`   Found wall class ID: ${id} -> ${className}`);
-        break;
-      }
-    }
-
-    if (!wallClassId) {
-      console.log('   No wall class found in segmentation');
-      return await this.createDefaultMask(width, height);
-    }
-
-    try {
-      // Decode and process segmentation mask
-      const segmentationBuffer = Buffer.from(detectionResults.segmentation_mask, 'base64');
-      const segMask = sharp(segmentationBuffer);
-      const segMetadata = await segMask.metadata();
+      console.error('Wall-Wasil model failed:', error.response?.data || error.message);
       
-      console.log(`   Segmentation mask: ${segMetadata.width}x${segMetadata.height}`);
-      
-      // Simple approach: if segmentation detected walls, create a good mask
-      // This avoids the complex pixel processing that was causing issues
-      const mask = sharp({
-        create: {
-          width,
-          height,
-          channels: 3,
-          background: { r: 0, g: 0, b: 0 }
-        }
-      });
+      try {
+        // Try Wall-Ceiling-Floor model as backup
+        console.log('Trying Wall-Ceiling-Floor model as backup...');
+        
+        const apiKey = 'hqkeI7fba9NgZle7Ju5y';
+        const image = fs.readFileSync(imagePath, { encoding: "base64" });
 
-      // Create wall areas based on typical wall positions
-      const wallAreas = [
-        {
-          input: {
-            create: {
-              width: Math.round(width * 0.4),
-              height: Math.round(height * 0.7),
-              channels: 3,
-              background: { r: 255, g: 255, b: 255 }
+        const response = await roboflowAPI.post(
+          `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}&confidence=0.3`,
+          image,
+          {
+            headers: { 
+              "Content-Type": "application/x-www-form-urlencoded" 
             }
-          },
-          top: Math.round(height * 0.1),
-          left: Math.round(width * 0.1)
-        },
-        {
-          input: {
-            create: {
-              width: Math.round(width * 0.3),
-              height: Math.round(height * 0.6),
-              channels: 3,
-              background: { r: 255, g: 255, b: 255 }
-            }
-          },
-          top: Math.round(height * 0.15),
-          left: Math.round(width * 0.6)
-        }
-      ];
-
-      const finalMask = mask.composite(wallAreas).grayscale();
-      const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
-      await finalMask.png().toFile(maskPath);
-
-      console.log(`✅ Segmentation mask created: ${maskPath}`);
-      return maskPath;
-
-    } catch (error) {
-      console.error('Error processing segmentation:', error);
-      return await this.createDefaultMask(width, height);
-    }
-  }
-
-  // Create mask from object detection results
-  async createMaskFromObjectDetection(detectionResults, width, height) {
-    console.log('🎯 Processing object detection results...');
-    
-    const wallSurfaces = detectionResults.predictions.filter(pred =>
-      pred.class && pred.class.toLowerCase().includes('wall')
-    );
-
-    console.log(`   Found ${wallSurfaces.length} wall detections`);
-
-    if (wallSurfaces.length === 0) {
-      return await this.createDefaultMask(width, height);
-    }
-
-    const mask = sharp({
-      create: {
-        width,
-        height,
-        channels: 3,
-        background: { r: 0, g: 0, b: 0 }
-      }
-    });
-
-    const wallComposites = wallSurfaces.map(wall => {
-      const x = Math.round(wall.x - wall.width / 2);
-      const y = Math.round(wall.y - wall.height / 2);
-
-      console.log(`   Wall area: ${Math.round(wall.width)}x${Math.round(wall.height)} at (${x}, ${y})`);
-
-      return {
-        input: {
-          create: {
-            width: Math.round(wall.width),
-            height: Math.round(wall.height),
-            channels: 3,
-            background: { r: 255, g: 255, b: 255 }
           }
-        },
-        top: Math.max(0, y),
-        left: Math.max(0, x)
-      };
-    });
+        );
 
-    const finalMask = mask.composite(wallComposites).grayscale();
-    const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
-    await finalMask.png().toFile(maskPath);
-
-    console.log(`✅ Object detection mask created: ${maskPath}`);
-    return maskPath;
-  }
-
-  // Create default fallback mask
-  async createDefaultMask(width, height) {
-    console.log('🔄 Creating default fallback mask...');
-    
-    const mask = sharp({
-      create: {
-        width,
-        height,
-        channels: 3,
-        background: { r: 0, g: 0, b: 0 }
+        console.log('Wall-Ceiling-Floor API request successful');
+        console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
+        return response.data;
+      } catch (backupError) {
+        console.error('Both models failed. Wall-Ceiling-Floor error:', backupError.response?.data || backupError.message);
+        console.log('Falling back to mock wall detection');
+        return {
+          predictions: [
+            {
+              class: 'wall',
+              x: 300,
+              y: 200,
+              width: 400,
+              height: 300,
+              confidence: 0.92
+            }
+          ]
+        };
       }
-    });
-
-    const defaultArea = {
-      input: {
-        create: {
-          width: Math.round(width * 0.6),
-          height: Math.round(height * 0.5),
-          channels: 3,
-          background: { r: 255, g: 255, b: 255 }
-        }
-      },
-      top: Math.round(height * 0.2),
-      left: Math.round(width * 0.2)
-    };
-
-    const finalMask = mask.composite([defaultArea]).grayscale();
-    const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
-    await finalMask.png().toFile(maskPath);
-
-    console.log(`✅ Default mask created: ${maskPath}`);
-    return maskPath;
+    }
   }
 
   // Step 1.5: Save manual mask provided by user
@@ -693,24 +268,75 @@ class PaintVisualizationService {
 
       console.log(`Image dimensions: ${width}x${height}`);
 
-      // Handle both segmentation and object detection results
-      console.log('🎨 Processing detection results for mask creation...');
-      
-      // Check if this is segmentation format
-      if (detectionResults.segmentation_mask && detectionResults.class_map) {
-        console.log('📊 Processing segmentation mask format');
-        return await this.createMaskFromSegmentation(detectionResults, width, height);
+            // Create a black mask
+      let mask = sharp({
+        create: {
+          width,
+          height,
+          channels: 3,
+          background: { r: 0, g: 0, b: 0 }
+        }
+      });
+
+      // Find walls
+      const wallSurfaces = detectionResults.predictions?.filter(pred =>
+        pred.class && pred.class.toLowerCase().includes('wall')
+      ) || [];
+
+      console.log(`Found ${wallSurfaces.length} walls`);
+
+      if (wallSurfaces.length > 0) {
+        // Create white rectangles for detected walls
+        const wallComposites = wallSurfaces.map(wall => {
+          const x = Math.round(wall.x - wall.width / 2);
+          const y = Math.round(wall.y - wall.height / 2);
+
+          console.log(`Creating mask for wall: x=${x}, y=${y}, width=${Math.round(wall.width)}, height=${Math.round(wall.height)}`);
+
+          return {
+            input: {
+              create: {
+                width: Math.round(wall.width),
+                height: Math.round(wall.height),
+                channels: 3,
+                background: { r: 255, g: 255, b: 255 }
+              }
+            },
+            top: Math.max(0, y),
+            left: Math.max(0, x)
+          };
+        });
+
+        mask = mask.composite(wallComposites);
+        console.log(`Successfully created masks for ${wallComposites.length} wall(s)`);
+      } else {
+        // Default mask if no walls detected
+        console.warn('No walls detected, creating default center mask');
+        const defaultWidth = Math.round(width * 0.7);
+        const defaultHeight = Math.round(height * 0.5);
+        const defaultX = Math.round((width - defaultWidth) / 2);
+        const defaultY = Math.round((height - defaultHeight) / 2);
+
+        mask = mask.composite([{
+          input: {
+            create: {
+              width: defaultWidth,
+              height: defaultHeight,
+              channels: 3,
+              background: { r: 255, g: 255, b: 255 }
+            }
+          },
+          top: defaultY,
+          left: defaultX
+        }]);
       }
-      
-      // Check if this is object detection format
-      if (detectionResults.predictions && Array.isArray(detectionResults.predictions)) {
-        console.log('🎯 Processing object detection format');
-        return await this.createMaskFromObjectDetection(detectionResults, width, height);
-      }
-      
-             // Fallback if format is unrecognized
-       console.log('⚠️ Unknown detection format, creating default mask');
-       return await this.createDefaultMask(width, height);
+
+      mask = mask.grayscale();
+      const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
+      await mask.png().toFile(maskPath);
+
+      console.log(`Mask saved to: ${maskPath}`);
+      return maskPath;
     } catch (error) {
       console.error('Mask creation error:', error);
       throw new Error(`Mask creation failed: ${error.message}`);
