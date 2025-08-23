@@ -171,25 +171,82 @@ class PaintVisualizationService {
       const apiKey = 'hqkeI7fba9NgZle7Ju5y';
       
       console.log('Detecting walls using Roboflow Wall Segmentation model...');
+      console.log('Preprocessing image for better API compatibility...');
 
-      // Read image and convert to base64 as required by the new model
-      const image = fs.readFileSync(imagePath, { encoding: "base64" });
-
+      // CRITICAL: Preprocess image to match browser version behavior
+      // This addresses the common API vs browser discrepancy issue
+      
+      // 1. Load image with Sharp for preprocessing
+      const imageBuffer = fs.readFileSync(imagePath);
+      let processedImage = sharp(imageBuffer);
+      
+      // 2. Get original metadata
+      const metadata = await processedImage.metadata();
+      console.log(`Original image: ${metadata.width}x${metadata.height}, channels: ${metadata.channels}`);
+      
+      // 3. Apply auto-orientation (CRITICAL - removes EXIF issues)
+      processedImage = processedImage.rotate(); // Auto-orient based on EXIF
+      
+      // 4. Ensure RGB format (no alpha channel)
+      if (metadata.channels > 3) {
+        processedImage = processedImage.removeAlpha();
+      }
+      
+      // 5. Normalize to standard dimensions if too large/small
+      const { width, height } = metadata;
+      if (width > 2048 || height > 2048 || width < 416 || height < 416) {
+        // Resize maintaining aspect ratio, with max dimension 1024
+        processedImage = processedImage.resize(1024, 1024, {
+          fit: 'inside',
+          withoutEnlargement: false
+        });
+        console.log('Resized image for better API processing');
+      }
+      
+      // 6. Convert to JPEG with consistent quality
+      const processedBuffer = await processedImage.jpeg({ quality: 95 }).toBuffer();
+      
+      // 7. Convert to base64
+      const image = processedBuffer.toString('base64');
+      
+      console.log(`Processed image size: ${processedBuffer.length} bytes`);
+      
+      // 8. Enhanced API call with additional parameters that match browser behavior
       const response = await roboflowAPI.post(
-        `/wall-1fzbi/1?api_key=${apiKey}`,
+        `/wall-1fzbi/1`,
         image,
         {
+          params: {
+            api_key: apiKey,
+            confidence: 0.4,  // Lower confidence for better detection
+            overlap: 0.3,     // Standard overlap
+            format: 'json'    // Explicit format
+          },
           headers: { 
-            "Content-Type": "application/x-www-form-urlencoded" 
-          }
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "nodejs-roboflow-client" // Identify as proper client
+          },
+          timeout: 30000
         }
       );
 
       console.log('Roboflow Wall Segmentation API request successful');
       console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
+      
+      // Validate response has proper segmentation data
+      if (response.data && response.data.segmentation_mask) {
+        console.log('✅ Segmentation mask received successfully');
+        console.log(`Mask size: ${response.data.segmentation_mask.length} characters`);
+      } else {
+        console.log('⚠️ No segmentation mask in response');
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Wall detection error:', error);
+      if (error.response) {
+        console.error('API Error Details:', error.response.status, error.response.data);
+      }
       console.log('Falling back to mock wall detection');
       return {
         predictions: [
@@ -259,31 +316,111 @@ class PaintVisualizationService {
         }
 
         if (wallClassId && detectionResults.segmentation_mask) {
-          console.log('Wall detected by segmentation - creating simple mask...');
+          console.log('Processing segmentation mask for wall detection...');
           
-          // Since segmentation confirmed walls exist, create a simple working mask
-          // Keep it SIMPLE - just create a reasonable wall area mask
+          try {
+            // Decode the base64 segmentation mask
+            const segmentationBuffer = Buffer.from(detectionResults.segmentation_mask, 'base64');
+            console.log(`Segmentation mask buffer size: ${segmentationBuffer.length} bytes`);
+            
+            // Load and process the segmentation mask
+            const segMask = sharp(segmentationBuffer);
+            const segMetadata = await segMask.metadata();
+            console.log(`Segmentation mask: ${segMetadata.width}x${segMetadata.height}, format: ${segMetadata.format}`);
+            
+            // Convert segmentation mask to same size as original image
+            const processedSegMask = await segMask
+              .resize(width, height, { fit: 'fill' })
+              .raw()
+              .toBuffer();
+            
+            // Create binary mask based on wall class pixels
+            const wallClassValue = parseInt(wallClassId);
+            console.log(`Looking for wall pixels with class value: ${wallClassValue}`);
+            
+            // Create mask buffer
+            const maskBuffer = Buffer.alloc(width * height * 3);
+            let wallPixelCount = 0;
+            
+            // Process segmentation data
+            const bytesPerPixel = segMetadata.channels || 1;
+            
+            for (let i = 0; i < width * height; i++) {
+              let pixelValue;
+              
+              if (bytesPerPixel === 1) {
+                pixelValue = processedSegMask[i];
+              } else {
+                pixelValue = processedSegMask[i * bytesPerPixel];
+              }
+              
+              const rgbIndex = i * 3;
+              
+              // Check if pixel represents wall class
+              if (pixelValue === wallClassValue) {
+                // Wall pixel - make it white in mask
+                maskBuffer[rgbIndex] = 255;     // R
+                maskBuffer[rgbIndex + 1] = 255; // G
+                maskBuffer[rgbIndex + 2] = 255; // B
+                wallPixelCount++;
+              } else {
+                // Non-wall pixel - keep black
+                maskBuffer[rgbIndex] = 0;       // R
+                maskBuffer[rgbIndex + 1] = 0;   // G
+                maskBuffer[rgbIndex + 2] = 0;   // B
+              }
+            }
+            
+            console.log(`Found ${wallPixelCount} wall pixels out of ${width * height} total pixels`);
+            
+            if (wallPixelCount > 0) {
+              // Create final mask from buffer
+              const finalMask = sharp(maskBuffer, {
+                raw: {
+                  width: width,
+                  height: height,
+                  channels: 3
+                }
+              }).grayscale();
+              
+              const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
+              await finalMask.png().toFile(maskPath);
+              
+              console.log(`✅ Segmentation-based mask created: ${maskPath}`);
+              console.log(`Mask covers ${((wallPixelCount / (width * height)) * 100).toFixed(1)}% of image`);
+              return maskPath;
+            } else {
+              console.log('⚠️ No wall pixels found in segmentation, creating fallback mask');
+              // Fall through to create a reasonable default mask
+            }
+            
+          } catch (error) {
+            console.error('Error processing segmentation mask:', error);
+            console.log('Creating fallback mask...');
+            // Fall through to create fallback mask
+          }
           
+          // Fallback: Create a reasonable wall mask
+          console.log('Creating fallback mask for detected walls...');
           const mask = sharp({
             create: {
               width,
               height,
               channels: 3,
-              background: { r: 0, g: 0, b: 0 } // Black background
+              background: { r: 0, g: 0, b: 0 }
             }
           });
 
-          // Create ONE simple wall area in the center-left where walls typically are
           const wallArea = {
             input: {
               create: {
-                width: Math.round(width * 0.4),
-                height: Math.round(height * 0.6),
+                width: Math.round(width * 0.5),
+                height: Math.round(height * 0.7),
                 channels: 3,
-                background: { r: 255, g: 255, b: 255 } // White = paint this area
+                background: { r: 255, g: 255, b: 255 }
               }
             },
-            top: Math.round(height * 0.2),
+            top: Math.round(height * 0.1),
             left: Math.round(width * 0.1)
           };
 
@@ -291,8 +428,7 @@ class PaintVisualizationService {
           const maskPath = path.join(uploadsDir, `mask-${Date.now()}.png`);
           await finalMask.png().toFile(maskPath);
 
-          console.log(`Simple wall mask created: ${maskPath}`);
-          console.log(`Wall area: ${Math.round(width * 0.4)}x${Math.round(height * 0.6)} at position (${Math.round(width * 0.1)}, ${Math.round(height * 0.2)})`);
+          console.log(`Fallback mask created: ${maskPath}`);
           return maskPath;
         }
       }
