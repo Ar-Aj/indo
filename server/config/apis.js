@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Roboflow API configuration for furniture detection
+// Roboflow API configuration for wall segmentation
 const roboflowAPI = axios.create({
-  baseURL: 'https://detect.roboflow.com',
+  baseURL: 'https://segment.roboflow.com',
   timeout: 30000
 });
 

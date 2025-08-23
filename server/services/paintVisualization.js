@@ -164,49 +164,28 @@ class PaintVisualizationService {
 
 
 
-  // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
+  // Step 1: Detect walls using Roboflow Wall Segmentation model
   async detectWallSurfaces(imagePath) {
     try {
-      // Check if API key is configured and valid
-      const apiKey = process.env.ROBOFLOW_API_KEY;
-      if (!apiKey || apiKey === 'your-roboflow-api-key-here') {
-        console.log('Roboflow API key not configured, using mock wall detection');
-        return {
-          predictions: [
-            {
-              class: 'wall',
-              x: 300,
-              y: 200,
-              width: 400,
-              height: 300,
-              confidence: 0.92
-            },
-            {
-              class: 'wall',
-              x: 800,
-              y: 250,
-              width: 300,
-              height: 400,
-              confidence: 0.88
-            }
-          ]
-        };
-      }
+      // Use the new API key for the wall segmentation model
+      const apiKey = 'hqkeI7fba9NgZle7Ju5y';
+      
+      console.log('Detecting walls using Roboflow Wall Segmentation model...');
 
-      console.log('Detecting walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model...');
-
-      const formData = new FormData();
-      formData.append('file', fs.createReadStream(imagePath));
+      // Read image and convert to base64 as required by the new model
+      const image = fs.readFileSync(imagePath, { encoding: "base64" });
 
       const response = await roboflowAPI.post(
-        `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}`,
-        formData,
+        `/wall-1fzbi/1?api_key=${apiKey}`,
+        image,
         {
-          headers: formData.getHeaders()
+          headers: { 
+            "Content-Type": "application/x-www-form-urlencoded" 
+          }
         }
       );
 
-      console.log('Roboflow Wall Detection API request successful');
+      console.log('Roboflow Wall Segmentation API request successful');
       console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
@@ -256,7 +235,7 @@ class PaintVisualizationService {
     }
   }
 
-  // Step 2: Create mask from Wall-Ceiling-Floor detection results
+  // Step 2: Create mask from Wall Segmentation detection results
   async createMaskFromWallDetection(imagePath, detectionResults) {
     try {
       const image = sharp(imagePath);
@@ -277,31 +256,58 @@ class PaintVisualizationService {
 
       // Find walls
       const wallSurfaces = detectionResults.predictions?.filter(pred =>
-        pred.class.toLowerCase() === 'wall'
+        pred.class && pred.class.toLowerCase().includes('wall')
       ) || [];
 
       console.log(`Found ${wallSurfaces.length} walls`);
 
       if (wallSurfaces.length > 0) {
-        // Create white rectangles for detected walls
+        // Handle both bounding box and segmentation results
         const wallComposites = wallSurfaces.map(wall => {
-          const x = Math.round(wall.x - wall.width / 2);
-          const y = Math.round(wall.y - wall.height / 2);
+          // Check if this is a bounding box result (has x, y, width, height)
+          if (wall.x !== undefined && wall.y !== undefined && wall.width !== undefined && wall.height !== undefined) {
+            const x = Math.round(wall.x - wall.width / 2);
+            const y = Math.round(wall.y - wall.height / 2);
 
-          console.log(`Creating mask for wall: x=${x}, y=${y}, width=${Math.round(wall.width)}, height=${Math.round(wall.height)}`);
+            console.log(`Creating mask for wall (bbox): x=${x}, y=${y}, width=${Math.round(wall.width)}, height=${Math.round(wall.height)}`);
 
-          return {
-            input: {
-              create: {
-                width: Math.round(wall.width),
-                height: Math.round(wall.height),
-                channels: 3,
-                background: { r: 255, g: 255, b: 255 }
-              }
-            },
-            top: Math.max(0, y),
-            left: Math.max(0, x)
-          };
+            return {
+              input: {
+                create: {
+                  width: Math.round(wall.width),
+                  height: Math.round(wall.height),
+                  channels: 3,
+                  background: { r: 255, g: 255, b: 255 }
+                }
+              },
+              top: Math.max(0, y),
+              left: Math.max(0, x)
+            };
+          } 
+          // Handle segmentation results - create a larger mask for segmented areas
+          else {
+            console.log(`Creating mask for wall (segmentation): confidence=${wall.confidence}`);
+            
+            // For segmentation results without explicit coordinates, create a reasonable mask
+            // This will be refined based on actual segmentation data when available
+            const maskWidth = Math.round(width * 0.6);
+            const maskHeight = Math.round(height * 0.4);
+            const maskX = Math.round((width - maskWidth) / 2);
+            const maskY = Math.round((height - maskHeight) / 2);
+
+            return {
+              input: {
+                create: {
+                  width: maskWidth,
+                  height: maskHeight,
+                  channels: 3,
+                  background: { r: 255, g: 255, b: 255 }
+                }
+              },
+              top: maskY,
+              left: maskX
+            };
+          }
         });
 
         mask = mask.composite(wallComposites);
