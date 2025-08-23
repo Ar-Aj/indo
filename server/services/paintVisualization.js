@@ -451,14 +451,14 @@ class PaintVisualizationService {
       mask_image: cleanMask,
       prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
       negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
-      strength: 0.85,
+      strength: 0.99,
       guidance: 12.0,
       steps: 35,
       width: newWidth,
       height: newHeight,
       output_format: 'jpeg',
       response_format: 'url',
-      seed: 5900
+      seed: 9867
     };
 
     console.log(`the ${colorName} has ${colorHex}`);
