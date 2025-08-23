@@ -171,7 +171,7 @@ class PaintVisualizationService {
   async detectWallSurfaces(imagePath) {
     try {
       // Try Wall-Wasil model first
-      console.log('Detecting walls using Wall-Wasil model...');
+      console.log('Detecting walls using Wall-1fzbi model...');
       
       const apiKey = 'hqkeI7fba9NgZle7Ju5y';
       
@@ -181,31 +181,35 @@ class PaintVisualizationService {
       console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
       
       const resizedBuffer = await sharp(imageBuffer)
-        .resize(640, 640)
+        .resize(640, 640, { fit: 'fill' })
         .jpeg({ quality: 90 })
         .toBuffer();
       
       const resizedMetadata = await sharp(resizedBuffer).metadata();
       console.log(`✅ Resized image: ${resizedMetadata.width}x${resizedMetadata.height}`);
-      console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-Wasil model`);
+              console.log(`📦 Sending ${resizedBuffer.length} bytes to Wall-1fzbi model`);
       
       const image = resizedBuffer.toString('base64');
 
-      const response = await roboflowAPI.post(
-        `/wall-wasil-1/2?api_key=${apiKey}&confidence=0.3`,
+            const response = await roboflowAPI.post(
+        `/wall-1fzbi/1`,
         image,
         {
-          headers: { 
-            "Content-Type": "application/x-www-form-urlencoded" 
+          params: {
+            api_key: apiKey,
+            confidence: 0.3
+          },
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
           }
         }
       );
 
-      console.log('Wall-Wasil API request successful');
+      console.log('Wall-1fzbi API request successful');
       console.log('Wall detection results:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
-      console.error('Wall-Wasil model failed:', error.response?.data || error.message);
+              console.error('Wall-1fzbi model failed:', error.response?.data || error.message);
       
       try {
         // Try Wall-Ceiling-Floor model as backup
@@ -219,7 +223,7 @@ class PaintVisualizationService {
         console.log(`🔧 Original image: ${originalMetadata.width}x${originalMetadata.height}`);
         
         const resizedBuffer = await sharp(imageBuffer)
-          .resize(640, 640)
+          .resize(640, 640, { fit: 'fill' })
           .jpeg({ quality: 90 })
           .toBuffer();
         
@@ -229,12 +233,16 @@ class PaintVisualizationService {
         
         const image = resizedBuffer.toString('base64');
 
-        const response = await roboflowAPI.post(
-          `/wall-ceiling-floor-m6bao/1?api_key=${apiKey}&confidence=0.3`,
+                const response = await roboflowAPI.post(
+          `/wall-ceiling-floor-m6bao/1`,
           image,
           {
-            headers: { 
-              "Content-Type": "application/x-www-form-urlencoded" 
+            params: {
+              api_key: apiKey,
+              confidence: 0.3
+            },
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded"
             }
           }
         );
