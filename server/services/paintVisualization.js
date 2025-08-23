@@ -361,51 +361,40 @@ class PaintVisualizationService {
       processedImage = processedImage.removeAlpha();
     }
     
-    // Normalize dimensions for better model performance
-    const { width, height } = metadata;
-    if (width > 1536 || height > 1536 || width < 320 || height < 320) {
-      processedImage = processedImage.resize(1024, 1024, {
-        fit: 'inside',
-        withoutEnlargement: false
-      });
-      console.log('   Resized for optimal processing');
-    }
+    // CRITICAL FIX: Resize to 640x640 as expected by the models
+    console.log('   🎯 Resizing to 640x640 for Roboflow model compatibility...');
+    processedImage = processedImage.resize(640, 640, {
+      fit: 'fill',  // Fill the entire 640x640 space
+      background: { r: 0, g: 0, b: 0 }
+    });
     
     // Convert to high-quality JPEG
     const processedBuffer = await processedImage.jpeg({ quality: 95 }).toBuffer();
     const base64Image = processedBuffer.toString('base64');
     
-    console.log(`   Processed image: ${processedBuffer.length} bytes`);
+    console.log(`   ✅ Processed to 640x640: ${processedBuffer.length} bytes`);
     return base64Image;
   }
 
-  // Call a specific Roboflow model
+  // Call a specific Roboflow model - SIMPLIFIED APPROACH
   async callRoboflowModel(model, imageData, confidence) {
-    console.log(`🔗 Making API call to: ${model.baseURL}${model.endpoint}`);
-    console.log(`📊 Confidence: ${confidence}, API Key: ${model.apiKey.substring(0, 8)}...`);
+    console.log(`🔗 Calling ${model.name} with ${(confidence * 100)}% confidence...`);
     
     try {
-      // Use the existing roboflowAPI from config instead of creating new axios instance
       const response = await roboflowAPI.post(
-        `${model.endpoint}?api_key=${model.apiKey}&confidence=${confidence}&overlap=0.3`,
+        `${model.endpoint}?api_key=${model.apiKey}&confidence=${confidence}`,
         imageData,
         {
           headers: { 
             "Content-Type": "application/x-www-form-urlencoded"
-          },
-          timeout: 30000
+          }
         }
       );
 
-      console.log(`✅ API Response received for ${model.name}`);
+      console.log(`✅ ${model.name} responded successfully`);
       return response.data;
     } catch (error) {
-      console.error(`❌ API Error for ${model.name}:`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
+      console.error(`❌ ${model.name} failed:`, error.response?.data || error.message);
       throw error;
     }
   }
