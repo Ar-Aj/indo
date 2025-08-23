@@ -11,6 +11,90 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
+  
+  constructor() {
+    // 🎛️ CONFIDENCE CONFIGURATION - EASILY ADJUSTABLE
+    this.confidenceConfig = {
+      // Primary confidence levels to try for each model
+      primaryConfidence: 0.3,    // 30% - Lower for better coverage
+      fallbackConfidence: 0.15,  // 15% - Very low for maximum detection
+      
+      // Model-specific overrides (optional)
+      modelOverrides: {
+        'wall-wasil-1': {
+          primaryConfidence: 0.25,   // 25% for Wall-Wasil model
+          fallbackConfidence: 0.1    // 10% fallback
+        },
+        'wall-ceiling-floor-m6bao': {
+          primaryConfidence: 0.35,   // 35% for Wall-Ceiling-Floor model  
+          fallbackConfidence: 0.2    // 20% fallback
+        }
+      },
+      
+      // Overlap threshold (affects how overlapping detections are handled)
+      overlapThreshold: 0.5,  // 50% overlap
+      
+      // Minimum area threshold (to filter out tiny detections)
+      minAreaThreshold: 0.01,  // 1% of image area minimum
+      
+      // Enable/disable specific models for testing
+      enabledModels: {
+        'wall-wasil-1': true,
+        'wall-ceiling-floor-m6bao': true
+      }
+    };
+  }
+
+  // 🔧 METHOD TO UPDATE CONFIDENCE SETTINGS
+  updateConfidenceConfig(newConfig) {
+    this.confidenceConfig = { ...this.confidenceConfig, ...newConfig };
+    console.log('🎛️ Updated confidence configuration:', this.confidenceConfig);
+  }
+
+  // 🔧 METHOD TO TEST SPECIFIC CONFIDENCE LEVEL
+  async testSpecificConfidence(imagePath, modelName, confidence) {
+    console.log(`🧪 TESTING: ${modelName} at ${(confidence * 100)}% confidence`);
+    
+    const models = [
+      {
+        name: 'Wall-Wasil Model',
+        endpoint: '/wall-wasil-1/2',
+        apiKey: 'hqkeI7fba9NgZle7Ju5y',
+        baseURL: 'https://detect.roboflow.com',
+        type: 'object_detection',
+        modelId: 'wall-wasil-1'
+      },
+      {
+        name: 'Wall-Ceiling-Floor Model', 
+        endpoint: '/wall-ceiling-floor-m6bao/1',
+        apiKey: 'hqkeI7fba9NgZle7Ju5y',
+        baseURL: 'https://detect.roboflow.com',
+        type: 'object_detection',
+        modelId: 'wall-ceiling-floor-m6bao'
+      }
+    ];
+
+    const model = models.find(m => m.modelId === modelName);
+    if (!model) {
+      throw new Error(`Model ${modelName} not found`);
+    }
+
+    const processedImageData = await this.preprocessImageForRoboflow(imagePath);
+    const result = await this.callRoboflowModel(model, processedImageData, confidence);
+    
+    console.log(`📊 Test Results for ${modelName} at ${(confidence * 100)}%:`);
+    console.log(`   Walls detected: ${this.countWalls(result)}`);
+    if (result.predictions) {
+      result.predictions.forEach((pred, i) => {
+        if (pred.class && pred.class.toLowerCase().includes('wall')) {
+          const area = pred.width * pred.height;
+          console.log(`   Wall ${i + 1}: ${Math.round(pred.width)}x${Math.round(pred.height)} (${area.toFixed(0)} px²) - ${(pred.confidence * 100).toFixed(1)}% confidence`);
+        }
+      });
+    }
+    
+    return result;
+  }
 
   // Generate pattern inpainting payloads using SDXL inpainting with mask (STEP 2)
   generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
@@ -175,46 +259,62 @@ class PaintVisualizationService {
         endpoint: '/wall-wasil-1/2',
         apiKey: 'hqkeI7fba9NgZle7Ju5y',
         baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection'
+        type: 'object_detection',
+        modelId: 'wall-wasil-1'
       },
       {
         name: 'Wall-Ceiling-Floor Model', 
         endpoint: '/wall-ceiling-floor-m6bao/1',
         apiKey: 'hqkeI7fba9NgZle7Ju5y',
         baseURL: 'https://detect.roboflow.com',
-        type: 'object_detection'
+        type: 'object_detection',
+        modelId: 'wall-ceiling-floor-m6bao'
       }
     ];
 
-    // Confidence thresholds to try
-    const confidenceThresholds = [0.6, 0.3]; // 60% then 30%
+    // Get confidence thresholds from configuration
+    console.log('🎛️ Using confidence configuration:', this.confidenceConfig);
 
     // Preprocess image once for all models
     const processedImageData = await this.preprocessImageForRoboflow(imagePath);
     
-    // Try each model with each confidence threshold
-    for (const model of models) {
-      console.log(`\n📡 Trying ${model.name}...`);
-      
-      for (const confidence of confidenceThresholds) {
-        console.log(`  🎯 Testing with ${(confidence * 100)}% confidence...`);
-        
-        try {
-          const result = await this.callRoboflowModel(model, processedImageData, confidence);
-          
-          if (this.hasValidWallDetection(result)) {
-            console.log(`✅ SUCCESS: ${model.name} detected walls at ${(confidence * 100)}% confidence!`);
-            console.log(`   Found ${this.countWalls(result)} wall(s)`);
-            return result;
-          } else {
-            console.log(`  ❌ No walls detected at ${(confidence * 100)}% confidence`);
-          }
-          
-        } catch (error) {
-          console.log(`  ⚠️ Error with ${model.name} at ${(confidence * 100)}%:`, error.message);
-        }
-      }
-    }
+         // Try each model with configured confidence thresholds
+     for (const model of models) {
+       // Check if model is enabled
+       if (!this.confidenceConfig.enabledModels[model.modelId]) {
+         console.log(`⏭️ Skipping disabled model: ${model.name}`);
+         continue;
+       }
+
+       console.log(`\n📡 Trying ${model.name}...`);
+       
+       // Get confidence levels for this model
+       const modelConfig = this.confidenceConfig.modelOverrides[model.modelId] || this.confidenceConfig;
+       const confidenceThresholds = [modelConfig.primaryConfidence, modelConfig.fallbackConfidence];
+       
+       for (const confidence of confidenceThresholds) {
+         console.log(`  🎯 Testing with ${(confidence * 100)}% confidence...`);
+         
+         try {
+           const result = await this.callRoboflowModel(model, processedImageData, confidence);
+           
+           // Filter results based on area threshold
+           const filteredResult = this.filterSmallDetections(result, width, height);
+           
+           if (this.hasValidWallDetection(filteredResult)) {
+             console.log(`✅ SUCCESS: ${model.name} detected walls at ${(confidence * 100)}% confidence!`);
+             console.log(`   Found ${this.countWalls(filteredResult)} wall(s) after filtering`);
+             this.logDetectionDetails(filteredResult);
+             return filteredResult;
+           } else {
+             console.log(`  ❌ No valid walls detected at ${(confidence * 100)}% confidence`);
+           }
+           
+         } catch (error) {
+           console.log(`  ⚠️ Error with ${model.name} at ${(confidence * 100)}%:`, error.message);
+         }
+       }
+     }
 
     // If all models fail, return mock data
     console.log('\n🔄 All models failed, using fallback mock detection');
@@ -340,6 +440,53 @@ class PaintVisualizationService {
     }
     
     return 0;
+  }
+
+  // Filter out small detections based on area threshold
+  filterSmallDetections(result, imageWidth, imageHeight) {
+    if (!result || !result.predictions) return result;
+
+    const totalImageArea = imageWidth * imageHeight;
+    const minArea = totalImageArea * this.confidenceConfig.minAreaThreshold;
+
+    console.log(`🔍 Filtering detections smaller than ${(this.confidenceConfig.minAreaThreshold * 100).toFixed(1)}% of image area (${minArea.toFixed(0)} px²)`);
+
+    const filteredPredictions = result.predictions.filter(pred => {
+      if (pred.class && pred.class.toLowerCase().includes('wall')) {
+        const area = pred.width * pred.height;
+        const isLargeEnough = area >= minArea;
+        
+        if (!isLargeEnough) {
+          console.log(`   Filtered out small wall: ${Math.round(pred.width)}x${Math.round(pred.height)} (${area.toFixed(0)} px²)`);
+        }
+        
+        return isLargeEnough;
+      }
+      return true; // Keep non-wall predictions
+    });
+
+    return {
+      ...result,
+      predictions: filteredPredictions
+    };
+  }
+
+  // Log detailed information about detections
+  logDetectionDetails(result) {
+    if (!result || !result.predictions) return;
+
+    const walls = result.predictions.filter(pred => 
+      pred.class && pred.class.toLowerCase().includes('wall')
+    );
+
+    if (walls.length > 0) {
+      console.log(`📏 Detection Details:`);
+      walls.forEach((wall, i) => {
+        const area = wall.width * wall.height;
+        const confidence = (wall.confidence * 100).toFixed(1);
+        console.log(`   Wall ${i + 1}: ${Math.round(wall.width)}x${Math.round(wall.height)} px (${area.toFixed(0)} px²) at (${Math.round(wall.x)}, ${Math.round(wall.y)}) - ${confidence}% confidence`);
+      });
+    }
   }
 
   // Create mask from segmentation results
