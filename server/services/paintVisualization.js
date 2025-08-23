@@ -317,8 +317,9 @@ class PaintVisualizationService {
        }
      }
 
-    // If all models fail, return mock data
+    // If all models fail, return mock data with clear fallback flag
     console.log('\n🔄 All models failed, using fallback mock detection');
+    console.log('🚨 WARNING: Using mock data - this will create dummy masks!');
     return {
       predictions: [
         {
@@ -330,7 +331,8 @@ class PaintVisualizationService {
           confidence: 0.92
         }
       ],
-      fallback: true
+      fallback: true,
+      isApiFailure: true
     };
   }
 
