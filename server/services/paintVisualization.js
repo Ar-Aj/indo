@@ -12,14 +12,15 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 
 class PaintVisualizationService {
 
-  // Generate pattern payloads for already painted walls (STEP 2)
+  // Generate pattern payloads for already painted walls (STEP 2) - Using img2img
   generatePatternPayloadForPaintedWall(paintedWallImageBase64, colorHex, colorName, pattern) {
     const basePayload = {
-      model: 'realistic-vision-v5-1-inpainting',
+      model: 'stable-diffusion-xl-v1-0',
       image: paintedWallImageBase64,
-      // Note: No mask needed since we're modifying the entire painted wall
       output_format: 'jpeg',
-      response_format: 'url'
+      response_format: 'url',
+      width: 1024,
+      height: 768
     };
 
     switch (pattern) {
@@ -48,11 +49,11 @@ class PaintVisualizationService {
       case 'vertical-stripes':
         return {
           ...basePayload,
-          prompt: `transform this ${colorName} painted wall into classic vertical striped pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, crisp paint edges`,
-          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays',
-          strength: 0.80,
-          guidance: 18.0,
-          steps: 50,
+          prompt: `interior room with classic vertical striped wall pattern, alternating ${colorName} ${colorHex} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, maintain room structure and furniture`,
+          negative_prompt: 'horizontal stripes, uneven stripe widths, crooked lines, wavy stripes, diagonal patterns, blurred edges, rough painting, text overlays, changing room layout, people',
+          strength: 0.65,
+          guidance: 16.0,
+          steps: 40,
           seed: 3003
         };
 
@@ -81,11 +82,11 @@ class PaintVisualizationService {
       case 'ombre':
         return {
           ...basePayload,
-          prompt: `transform this ${colorName} painted wall into stunning ombre gradient effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique`,
-          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays',
-          strength: 0.70,
-          guidance: 15.0,
-          steps: 42,
+          prompt: `interior room with stunning ombre gradient wall effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique, maintain room structure and lighting`,
+          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays, objects, furniture changes, people, changing room layout',
+          strength: 0.6,
+          guidance: 14.0,
+          steps: 35,
           seed: 6006
         };
 
@@ -125,11 +126,11 @@ class PaintVisualizationService {
       case 'textured':
         return {
           ...basePayload,
-          prompt: `transform this ${colorName} painted wall into sophisticated textured finish with flowing wave-like texture pattern throughout the entire wall surface, ${colorName} ${colorHex} base color with subtle sponge painting technique creating organic wave formations, elegant depth variation, professional faux finish with gentle undulating waves, three-dimensional texture pattern, soft matte finish`,
-          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns',
-          strength: 0.88,
-          guidance: 18.5,
-          steps: 52,
+          prompt: `interior room with sophisticated textured wall finish, flowing wave-like texture pattern throughout the entire wall surface, ${colorName} ${colorHex} base color with elegant sponge painting technique creating organic wave formations, professional faux finish with gentle undulating waves, three-dimensional texture, soft matte finish, maintain room structure`,
+          negative_prompt: 'flat surface, no texture, glossy finish, harsh angular texture, geometric patterns, straight lines, rigid texture, wrong technique, color variations, uneven color application, rough bumpy texture, sharp edges, text overlays, objects, furniture changes, wallpaper patterns, people, changing room layout',
+          strength: 0.7,
+          guidance: 15.0,
+          steps: 40,
           seed: 1010
         };
 
@@ -146,146 +147,7 @@ class PaintVisualizationService {
     }
   }
 
-  // Generate pattern-specific payloads with thoughtful optimization for each pattern
-  generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, pattern, width, height) {
-    const basePayload = {
-      model: 'realistic-vision-v5-1-inpainting',
-      image: cleanImage,
-      mask_image: cleanMask,
-      width: width,
-      height: height,
-      output_format: 'jpeg',
-      response_format: 'url'
-    };
 
-    switch (pattern) {
-      case 'plain':
-        // 🎯 ORIGINAL PERFECT PAYLOAD - DO NOT CHANGE!
-        return {
-          ...basePayload,
-          prompt: `wall painted in exact ${colorName} color ${colorHex}, flat wall texture, realistic indoor lighting, maintain original room layout`,
-          negative_prompt: 'windows, lamps, furniture, decorations, objects, paintings, frames, new items, extra objects, people, text, cartoon, unrealistic colors, color shift, oversaturated, undersaturated, wrong hue, lighting fixtures, architectural changes',
-          strength: 0.85,
-          guidance: 12.0,
-          steps: 35,
-          seed: 420
-        };
-
-      case 'accent-wall':
-        return {
-          ...basePayload,
-          prompt: `interior room with one dramatic accent wall painted in rich ${colorName} ${colorHex}, other walls neutral off-white, feature wall focal point, professional interior design, realistic lighting, modern residential style`,
-          negative_prompt: 'all walls same color, uniform color, no accent, poor contrast, wrong wall selection, text overlays, unrealistic colors, furniture changes, architectural modifications, people, objects',
-          strength: 0.82,
-          guidance: 14.0,
-          steps: 40,
-          seed: 1001
-        };
-
-      case 'two-tone':
-        return {
-          ...basePayload,
-          prompt: `elegant two-tone wall design, lower section painted ${colorName} ${colorHex}, upper section crisp white, horizontal division with classic chair rail molding at 36 inches, traditional wainscoting style, perfect paint line separation`,
-          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, color bleeding, messy edges, modern style, gradient, ombre effect, text, objects, furniture',
-          strength: 0.88,
-          guidance: 16.0,
-          steps: 45,
-          seed: 2002
-        };
-
-      case 'vertical-stripes':
-        return {
-          ...basePayload,
-          prompt: `classic vertical striped wall, alternating ${colorName} ${colorHex} and crisp white vertical stripes, each stripe exactly 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
-          negative_prompt: 'horizontal stripes, uneven widths, crooked lines, wavy stripes, diagonal patterns, color variations, blurred edges, modern geometric, text overlays, furniture changes',
-          strength: 0.92,
-          guidance: 18.0,
-          steps: 50,
-          seed: 3003
-        };
-
-      case 'horizontal-stripes':
-        return {
-          ...basePayload,
-          prompt: `nautical horizontal striped wall, alternating ${colorName} ${colorHex} and white horizontal bands, each stripe 6 inches tall, perfectly straight horizontal lines, coastal interior design, crisp paint edges`,
-          negative_prompt: 'vertical stripes, uneven heights, tilted lines, wavy bands, wrong stripe sizes, color bleeding, rough edges, diagonal patterns, text, objects, architectural changes',
-          strength: 0.90,
-          guidance: 17.0,
-          steps: 48,
-          seed: 4004
-        };
-
-      case 'geometric':
-        return {
-          ...basePayload,
-          prompt: `modern geometric wall pattern, ${colorName} ${colorHex} triangular shapes on white background, contemporary art deco design, clean geometric forms, symmetrical pattern, sharp angular edges, sophisticated interior`,
-          negative_prompt: 'organic shapes, curved lines, random patterns, traditional designs, floral motifs, uneven geometry, color gradients, soft edges, text overlays, furniture, people',
-          strength: 0.94,
-          guidance: 19.0,
-          steps: 55,
-          seed: 5005
-        };
-
-      case 'ombre':
-        return {
-          ...basePayload,
-          prompt: `stunning ombre gradient wall effect, ${colorName} ${colorHex} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique, subtle blending, elegant fade effect`,
-          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, patchy blending, wrong gradient direction, color bands, uneven fade, text overlays, objects, furniture changes',
-          strength: 0.86,
-          guidance: 15.0,
-          steps: 42,
-          seed: 6006
-        };
-
-      case 'color-block':
-        return {
-          ...basePayload,
-          prompt: `bold color block wall design, large rectangular sections of ${colorName} ${colorHex} alternating with white blocks, modern minimalist pattern, clean geometric rectangles, contemporary art inspired, precise edges`,
-          negative_prompt: 'small blocks, irregular shapes, curved edges, traditional patterns, gradients, color bleeding, uneven rectangles, diagonal blocks, text, furniture, people, objects',
-          strength: 0.91,
-          guidance: 17.5,
-          steps: 47,
-          seed: 7007
-        };
-
-      case 'wainscoting':
-        return {
-          ...basePayload,
-          prompt: `classic wainscoting design, lower third of wall painted ${colorName} ${colorHex}, upper two-thirds white, traditional chair rail molding, elegant panel details, formal dining room style, precise paint lines`,
-          negative_prompt: 'wrong proportions, no molding, modern style, uneven division, color bleeding, missing panels, contemporary design, gradient effects, text overlays, furniture changes',
-          strength: 0.87,
-          guidance: 16.5,
-          steps: 44,
-          seed: 8008
-        };
-
-      case 'border':
-        return {
-          ...basePayload,
-          prompt: `elegant wall with decorative border frame, ${colorName} ${colorHex} main wall color with crisp white border frame around all edges, 6-inch border width, picture frame effect, sophisticated interior design`,
-          negative_prompt: 'no border, uneven frame, wrong border size, color bleeding, rough edges, modern geometric, missing frame sections, text overlays, furniture, architectural changes',
-          strength: 0.89,
-          guidance: 16.0,
-          steps: 43,
-          seed: 9009
-        };
-
-      case 'textured':
-        return {
-          ...basePayload,
-          prompt: `sophisticated textured wall finish, ${colorName} ${colorHex} with subtle sponge painting technique, elegant texture variation, professional faux finish, organic texture pattern, depth and dimension, matte finish`,
-          negative_prompt: 'flat surface, no texture, glossy finish, harsh texture, wrong technique, color variations, uneven application, rough texture, text overlays, objects, furniture changes',
-          strength: 0.93,
-          guidance: 18.5,
-          steps: 52,
-          seed: 1010
-        };
-
-      default:
-        // Fallback to plain if pattern not recognized
-        return this.generatePatternSpecificPayload(cleanImage, cleanMask, colorHex, colorName, 'plain', width, height);
-    }
-  }
 
 
   // Step 1: Detect walls, ceiling, and floor using Roboflow Wall-Ceiling-Floor model
@@ -618,7 +480,7 @@ class PaintVisualizationService {
       const patternPayload = this.generatePatternPayloadForPaintedWall(imageBase64, colorHex, colorName, pattern);
       
       console.log(`Applying ${pattern} pattern to painted wall...`);
-      const patternResponse = await getimgAPI.post('/stable-diffusion/inpaint', patternPayload);
+      const patternResponse = await getimgAPI.post('/stable-diffusion-xl/image-to-image', patternPayload);
 
       console.log('STEP 2 COMPLETE: Pattern applied successfully');
       return {
