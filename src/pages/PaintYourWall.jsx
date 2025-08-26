@@ -838,84 +838,6 @@ const PaintYourWall = () => {
           </div>
         )}
 
-        {/* Step Progress Indicator */}
-        {!result && (
-          <div className="card p-6 mb-8 bg-gradient-to-r from-blue-50 to-purple-50">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress Overview</h3>
-              
-              {/* Progress Steps */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {getCompletionStatus().steps.map((step, index) => (
-                  <div key={step.id} className="flex items-center space-x-3">
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      step.completed 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {step.completed ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        step.id
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${
-                        step.completed ? 'text-green-700' : 'text-gray-600'
-                      }`}>
-                        {step.name}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {step.description}
-                      </p>
-                    </div>
-                    
-                    {/* Progress line */}
-                    {index < getCompletionStatus().steps.length - 1 && (
-                      <div className="hidden lg:block w-8 h-0.5 bg-gray-200">
-                        <div className={`h-full transition-all duration-300 ${
-                          step.completed ? 'bg-green-500 w-full' : 'bg-gray-200 w-0'
-                        }`}></div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Overall Progress Bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                  <span>Overall Progress</span>
-                  <span>{getCompletionStatus().completedSteps} of {getCompletionStatus().totalSteps} steps completed</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${(getCompletionStatus().completedSteps / getCompletionStatus().totalSteps) * 100}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Status Message */}
-              <div className="text-center">
-                {getCompletionStatus().allCompleted ? (
-                  <div className="inline-flex items-center bg-green-100 text-green-700 px-4 py-2 rounded-lg">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    All steps completed! Ready to generate your visualization.
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center bg-blue-100 text-blue-700 px-4 py-2 rounded-lg">
-                    <Info className="w-5 h-5 mr-2" />
-                    Next: {getCompletionStatus().nextStep?.description}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Main Form */}
         {!result && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -1557,6 +1479,79 @@ const PaintYourWall = () => {
               </div>
             </div>
 
+            {/* Compact Step Progress - Right before submit */}
+            <div className="card p-4 bg-blue-50 border border-blue-200">
+              <div className="flex flex-col space-y-3">
+                <h4 className="text-sm font-semibold text-gray-700 text-center mb-2">Progress Steps</h4>
+                
+                {/* Vertical Steps Line */}
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center space-y-2">
+                    {getCompletionStatus().steps.map((step, index) => (
+                      <div key={step.id} className="flex items-center w-full max-w-xs">
+                        {/* Step Number/Check */}
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${
+                          step.completed 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          {step.completed ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            step.id
+                          )}
+                        </div>
+                        
+                        {/* Step Info */}
+                        <div className="flex-1">
+                          <p className={`text-xs font-medium ${
+                            step.completed ? 'text-green-700' : 'text-gray-600'
+                          }`}>
+                            {step.name}
+                          </p>
+                        </div>
+                        
+                        {/* Status */}
+                        <div className="flex-shrink-0 ml-2">
+                          {step.completed ? (
+                            <span className="text-xs text-green-600 font-medium">✓</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">○</span>
+                          )}
+                        </div>
+                        
+                        {/* Connecting Line */}
+                        {index < getCompletionStatus().steps.length - 1 && (
+                          <div className="absolute left-[11px] mt-6 w-0.5 h-4 bg-gray-300"></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Status Summary */}
+                <div className="text-center mt-3 pt-3 border-t border-blue-200">
+                  {getCompletionStatus().allCompleted ? (
+                    <div className="text-xs text-green-700 font-medium">
+                      ✅ All steps completed! Ready to generate visualization.
+                    </div>
+                  ) : (
+                    <div className="text-xs text-blue-700">
+                      📍 Next: {getCompletionStatus().nextStep?.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Plain Pattern Default Info */}
+                <div className="text-center mt-2 pt-2 border-t border-blue-200">
+                  <div className="text-xs text-gray-600">
+                    <Square className="w-3 h-3 inline mr-1" />
+                    Plain/Solid pattern is selected by default for best color accuracy
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Submit Button */}
             <div className="text-center">
               <button
@@ -1577,7 +1572,7 @@ const PaintYourWall = () => {
                 )}
               </button>
               
-              {(!selectedImage || !selectedColor || (maskingMethod === 'manual' && !manualMask)) && (
+                            {(!selectedImage || !selectedColor || (maskingMethod === 'manual' && !manualMask)) && (
                 <p className="text-sm text-gray-500 mt-3">
                   {!selectedImage 
                     ? 'Please upload an image to continue'
