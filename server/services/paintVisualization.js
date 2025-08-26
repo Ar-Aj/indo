@@ -15,7 +15,7 @@ class PaintVisualizationService {
   
 
 
-  // Generate pattern inpainting payloads using SDXL inpainting with mask (STEP 2)
+  // Generate pattern inpainting payloads using SDXL inpainting with mask (STEP 2) - OPTIMIZED FOR 3 CORE PATTERNS
   generatePatternInpaintingPayload(paintedWallImageBase64, maskBase64, colorHex, colorName, pattern) {
     const basePayload = {
       model: 'realistic-vision-v5-1-inpainting',
@@ -28,130 +28,30 @@ class PaintVisualizationService {
     };
 
     switch (pattern) {
-      case 'accent-wall':
-        return {
-          ...basePayload,
-          prompt: `dramatic accent wall design, bold ${colorName} wall styling, striking focal point, professional interior design`,
-          negative_prompt: 'all walls same color, uniform walls, no accent, poor contrast, different colors, room changes, furniture, objects, people',
-          strength: 0.7,
-          guidance: 7.5,
-          steps: 35,
-          seed: 1001
-        };
-
-      case 'two-tone':
-        return {
-          ...basePayload,
-          prompt: `wall with two-tone paint design, lower section ${colorName}, upper section white, horizontal division with chair rail molding, traditional wainscoting style`,
-          negative_prompt: 'uneven division, crooked lines, no molding, wrong proportions, different colors, room changes, furniture, objects, people',
-          strength: 0.8,
-          guidance: 8.5,
-          steps: 40,
-          seed: 2002
-        };
-
-      case 'horizontal-stripes':
-        return {
-          ...basePayload,
-          prompt: `wall with horizontal striped pattern, alternating ${colorName} and white horizontal bands, each stripe 6 inches tall, perfectly straight horizontal lines, coastal design`,
-          negative_prompt: 'vertical stripes, diagonal stripes, uneven stripes, tilted lines, wavy bands, different colors, room changes, furniture, objects, people',
-          strength: 0.85,
-          guidance: 9.0,
-          steps: 45,
-          seed: 4004
-        };
-
-
-
-      case 'vertical-stripes':
-        return {
-          ...basePayload,
-          prompt: `wall with classic vertical striped pattern, alternating ${colorName} and white vertical stripes, each stripe 4 inches wide, perfectly straight parallel lines, traditional wallpaper style, sharp clean edges`,
-          negative_prompt: 'horizontal stripes, diagonal stripes, uneven stripes, crooked lines, wavy lines, different colors, room changes, furniture, objects, people',
-          strength: 0.85,
-          guidance: 9.0,
-          steps: 45,
-          seed: 3003
-        };
-
-      case 'horizontal-stripes':
-        return {
-          ...basePayload,
-          prompt: `transform this ${colorName} painted wall into nautical horizontal striped pattern, alternating ${colorName} ${colorHex} and white horizontal bands, each stripe 6 inches tall, perfectly straight lines, coastal design`,
-          negative_prompt: 'vertical stripes, uneven stripe heights, tilted lines, wavy bands, wrong proportions, rough edges, diagonal patterns, text overlays',
-          strength: 0.78,
-          guidance: 17.0,
-          steps: 48,
-          seed: 4004
-        };
-
       case 'geometric':
         return {
           ...basePayload,
-          prompt: `transform this ${colorName} painted wall into modern geometric pattern, ${colorName} ${colorHex} triangular shapes on white background, contemporary art deco design, clean geometric forms, symmetrical pattern`,
-          negative_prompt: 'organic shapes, curved lines, random patterns, traditional designs, floral motifs, uneven geometry, soft edges, text overlays',
-          strength: 0.85,
-          guidance: 19.0,
-          steps: 55,
+          prompt: `transform this ${colorName} painted wall into sophisticated modern geometric pattern, elegant ${colorName} ${colorHex} triangular and diamond shapes on crisp white background, contemporary architectural design, clean geometric forms, symmetrical balanced pattern, premium interior design, professional execution`,
+          negative_prompt: 'organic shapes, curved lines, random patterns, traditional designs, floral motifs, uneven geometry, soft edges, text overlays, busy patterns, cluttered design, childish shapes',
+          strength: 0.82,
+          guidance: 18.0,
+          steps: 50,
           seed: 5005
         };
 
       case 'ombre':
         return {
           ...basePayload,
-          prompt: `wall with stunning ombre gradient effect, ${colorName} at bottom gradually fading to pure white at top, smooth seamless color transition, professional gradient technique`,
-          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, color bands, uneven fade, different colors, room changes, furniture, objects, people',
+          prompt: `wall with stunning professional ombre gradient effect, ${colorName} ${colorHex} at bottom smoothly transitioning to pure white at top, seamless color blend, premium gradient technique, elegant fade effect, sophisticated interior design, perfect color graduation`,
+          negative_prompt: 'harsh transitions, abrupt color changes, striped effect, color bands, uneven fade, different colors, room changes, furniture, objects, people, text overlays, rough edges',
           strength: 0.75,
-          guidance: 8.0,
-          steps: 40,
+          guidance: 16.0,
+          steps: 45,
           seed: 6006
         };
 
-      case 'color-block':
-        return {
-          ...basePayload,
-          prompt: `transform this ${colorName} painted wall into bold color block design, large rectangular sections of ${colorName} ${colorHex} alternating with white blocks, modern minimalist pattern, clean geometric rectangles`,
-          negative_prompt: 'small blocks, irregular shapes, curved edges, traditional patterns, gradients, color bleeding, uneven rectangles, text overlays',
-          strength: 0.82,
-          guidance: 17.5,
-          steps: 47,
-          seed: 7007
-        };
-
-      case 'wainscoting':
-        return {
-          ...basePayload,
-          prompt: `transform this ${colorName} painted wall into classic wainscoting design, lower third painted ${colorName} ${colorHex}, upper two-thirds white, add traditional chair rail molding, elegant panel details`,
-          negative_prompt: 'wrong proportions, no molding, modern style, uneven division, color bleeding, missing panels, contemporary design, text overlays',
-          strength: 0.77,
-          guidance: 16.5,
-          steps: 44,
-          seed: 8008
-        };
-
-      case 'border':
-        return {
-          ...basePayload,
-          prompt: `transform this ${colorName} painted wall by adding elegant decorative border frame, keep ${colorName} ${colorHex} main color, add crisp white border frame around all edges, 6-inch border width`,
-          negative_prompt: 'no border, uneven frame, wrong border size, color bleeding, rough edges, missing frame sections, text overlays',
-          strength: 0.73,
-          guidance: 16.0,
-          steps: 43,
-          seed: 9009
-        };
-
-      case 'textured':
-        return {
-          ...basePayload,
-          prompt: `${colorName} ${colorHex} wall with flowing wave-like texture pattern, elegant organic wave formations, professional sponge painting technique, gentle undulating three-dimensional texture, soft matte finish`,
-          negative_prompt: 'flat wall, no texture, glossy finish, smooth surface, different colors, room changes, furniture, objects, people',
-          strength: 0.8,
-          guidance: 8.0,
-          steps: 40,
-          seed: 101000
-        };
-
       default:
+        // Plain pattern - handled in the main generation function
         return {
           ...basePayload,
           prompt: `maintain this ${colorName} ${colorHex} painted wall as is`,
@@ -163,10 +63,6 @@ class PaintVisualizationService {
         };
     }
   }
-
-
-
-
 
 
   // Step 1: Detect walls using Roboflow - SIMPLE APPROACH

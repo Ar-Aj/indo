@@ -64,6 +64,51 @@ const PaintYourWall = () => {
   const [brushSize, setBrushSize] = useState(20);
   const canvasRef = useRef(null);
   const maskCanvasRef = useRef(null);
+
+  // Helper function to get completion status
+  const getCompletionStatus = () => {
+    const steps = [
+      {
+        id: 1,
+        name: 'Upload Image',
+        completed: !!selectedImage,
+        enabled: true,
+        description: 'Upload your room photo'
+      },
+      {
+        id: 2,
+        name: 'Select Areas',
+        completed: !!selectedImage && (maskingMethod === 'ai' || (maskingMethod === 'manual' && !!manualMask)),
+        enabled: !!selectedImage,
+        description: maskingMethod === 'manual' ? 'Draw areas to paint' : 'AI will detect walls'
+      },
+      {
+        id: 3,
+        name: 'Choose Pattern (Optional)',
+        completed: true, // Always completed since plain is default and patterns are optional
+        enabled: !!selectedImage,
+        description: 'Plain always included + optional patterns'
+      },
+      {
+        id: 4,
+        name: 'Pick Color',
+        completed: !!selectedColor,
+        enabled: !!selectedImage,
+        description: 'Choose your paint color'
+      }
+    ];
+
+    const completedSteps = steps.filter(step => step.completed).length;
+    const nextStep = steps.find(step => step.enabled && !step.completed);
+    
+    return {
+      steps,
+      completedSteps,
+      totalSteps: steps.length,
+      nextStep,
+      allCompleted: !!selectedImage && !!selectedColor && (maskingMethod === 'ai' || (maskingMethod === 'manual' && !!manualMask))
+    };
+  };
   
   const {
     register,
@@ -78,90 +123,26 @@ const PaintYourWall = () => {
     {
       id: 'plain',
       name: 'Plain/Solid',
-      description: 'Classic solid color application for a clean, timeless look',
+      description: 'Classic solid color application for a clean, timeless look that works perfectly in any room',
       icon: Square,
       preview: 'Uniform color coverage',
       popular: true
     },
     {
-      id: 'accent-wall',
-      name: 'Accent Wall',
-      description: 'Highlight one feature wall while keeping others neutral',
-      icon: Target,
-      preview: 'One bold wall, others neutral',
-      popular: true
-    },
-    {
-      id: 'two-tone',
-      name: 'Two-Tone',
-      description: 'Upper and lower wall sections in complementary colors',
-      icon: Layers,
-      preview: 'Horizontal split design',
-      popular: false
-    },
-    {
-      id: 'vertical-stripes',
-      name: 'Vertical Stripes',
-      description: 'Classic vertical stripes to create height illusion',
-      icon: Grid,
-      preview: 'Vertical striped pattern',
-      popular: false
-    },
-    {
-      id: 'horizontal-stripes',
-      name: 'Horizontal Stripes',
-      description: 'Modern horizontal bands for contemporary appeal',
-      icon: Maximize,
-      preview: 'Horizontal banded design',
-      popular: false
-    },
-    {
       id: 'geometric',
       name: 'Geometric Shapes',
-      description: 'Contemporary triangular or geometric patterns',
+      description: 'Contemporary triangular and geometric patterns that create modern visual interest and architectural appeal',
       icon: Triangle,
       preview: 'Modern geometric design',
-      popular: false
+      popular: true
     },
     {
       id: 'ombre',
-      name: 'Ombre/Gradient',
-      description: 'Subtle color fade from light to dark',
+      name: 'Ombre Gradient Walls',
+      description: 'Stunning gradient effect from your chosen color to white, creating depth and sophistication',
       icon: Waves,
       preview: 'Gradient color transition',
-      popular: false
-    },
-    {
-      id: 'color-block',
-      name: 'Color Block',
-      description: 'Bold geometric color sections for modern spaces',
-      icon: Circle,
-      preview: 'Bold geometric blocks',
-      popular: false
-    },
-    {
-      id: 'wainscoting',
-      name: 'Wainscoting Style',
-      description: 'Traditional lower wall color with upper neutral',
-      icon: Frame,
-      preview: 'Classic chair rail style',
       popular: true
-    },
-    {
-      id: 'border',
-      name: 'Border/Frame',
-      description: 'Color with decorative border around the room',
-      icon: Frame,
-      preview: 'Elegant framed design',
-      popular: false
-    },
-    {
-      id: 'textured',
-      name: 'Textured Effect',
-      description: 'Sponge or stippled texture for artistic appeal',
-      icon: Brush,
-      preview: 'Artistic textured finish',
-      popular: false
     }
   ];
 
@@ -915,13 +896,13 @@ const PaintYourWall = () => {
               </div>
             </div>
 
-            {/* Step 1.5: Masking Method Selection (only show if image is uploaded) */}
-            {imagePreview && (
-              <div className="card p-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <MousePointer className="w-6 h-6 mr-3" />
-                  Step 1.5: Select Areas to Paint
-                </h3>
+            {/* Step 2: Masking Method Selection */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <MousePointer className="w-6 h-6 mr-3" />
+                Step 2: Select Areas to Paint
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
+              </h3>
                 
                 <div className="space-y-6">
                   {/* Method Selection */}
@@ -929,10 +910,14 @@ const PaintYourWall = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setMaskingMethod('manual');
-                        setManualMask(null);
+                        if (selectedImage) {
+                          setMaskingMethod('manual');
+                          setManualMask(null);
+                        }
                       }}
+                      disabled={!selectedImage}
                       className={`p-6 rounded-xl border-2 transition-all duration-200 ${
+                        !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50' :
                         maskingMethod === 'manual'
                           ? 'border-blue-500 bg-blue-50 shadow-lg'
                           : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
@@ -953,11 +938,15 @@ const PaintYourWall = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setMaskingMethod('ai');
-                        setManualMask(null);
-                        setShowMaskingTool(false);
+                        if (selectedImage) {
+                          setMaskingMethod('ai');
+                          setManualMask(null);
+                          setShowMaskingTool(false);
+                        }
                       }}
+                      disabled={!selectedImage}
                       className={`p-6 rounded-xl border-2 transition-all duration-200 ${
+                        !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50' :
                         maskingMethod === 'ai'
                           ? 'border-blue-500 bg-blue-50 shadow-lg'
                           : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
@@ -1032,7 +1021,6 @@ const PaintYourWall = () => {
                   )}
                 </div>
               </div>
-            )}
 
             {/* Manual Masking Tool - Optimized Responsive Modal */}
             {showMaskingTool && (
@@ -1244,134 +1232,126 @@ const PaintYourWall = () => {
               </div>
             )}
 
-            {/* Step 2: Pattern Selection (only show if image is uploaded) */}
-            {imagePreview && (
-              <div className="card p-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <Grid className="w-6 h-6 mr-3" />
-                  Step 2: Choose Paint Pattern
-                </h3>
-                
-                <p className="text-gray-600 mb-6">
-                  Select how you want the paint to be applied. Each pattern creates a different visual effect.
-                </p>
-
-                {/* Popular Patterns First */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Star className="w-5 h-5 mr-2 text-yellow-500" />
-                    Popular Patterns
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {paintPatterns.filter(pattern => pattern.popular).map((pattern) => {
-                      const IconComponent = pattern.icon;
-                      return (
-                        <button
-                          key={pattern.id}
-                          type="button"
-                          onClick={() => setSelectedPattern(pattern.id)}
-                          disabled={processing}
-                          className={`p-6 rounded-xl border-2 transition-all duration-200 text-left ${
-                            selectedPattern === pattern.id
-                              ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
-                              : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
-                          }`}
-                        >
-                          <div className="flex items-start space-x-4">
-                            <div className={`p-3 rounded-lg ${
-                              selectedPattern === pattern.id ? 'bg-blue-100' : 'bg-gray-100'
-                            }`}>
-                              <IconComponent className={`w-6 h-6 ${
-                                selectedPattern === pattern.id ? 'text-blue-600' : 'text-gray-600'
-                              }`} />
-                            </div>
-                            <div className="flex-1">
-                              <h5 className="font-bold text-gray-900 mb-1">{pattern.name}</h5>
-                              <p className="text-sm text-gray-600 mb-2">{pattern.description}</p>
-                              <p className="text-xs text-blue-600 font-medium">{pattern.preview}</p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+            {/* Step 3: Pattern Selection (Optional) */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <Grid className="w-6 h-6 mr-3" />
+                Step 3: Choose Additional Patterns (Optional)
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
+              </h3>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-1">Plain/Solid Always Included</h4>
+                    <p className="text-sm text-blue-800">
+                      We'll always generate a plain/solid color version for accurate color representation. 
+                      Optionally select additional patterns below to see creative alternatives.
+                    </p>
                   </div>
                 </div>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Choose additional patterns to see creative alternatives alongside your plain color version.
+              </p>
 
-                {/* All Patterns */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Palette className="w-5 h-5 mr-2 text-purple-500" />
-                    All Pattern Options
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {paintPatterns.map((pattern) => {
-                      const IconComponent = pattern.icon;
-                      return (
-                        <button
-                          key={pattern.id}
-                          type="button"
-                          onClick={() => setSelectedPattern(pattern.id)}
-                          disabled={processing}
-                          className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                            selectedPattern === pattern.id
-                              ? 'border-blue-500 bg-blue-50 shadow-lg'
-                              : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3 mb-2">
-                            <IconComponent className={`w-5 h-5 ${
+                {/* Pattern Options Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  {paintPatterns.filter(p => p.id !== 'plain').map((pattern) => {
+                    const IconComponent = pattern.icon;
+                    return (
+                      <button
+                        key={pattern.id}
+                        type="button"
+                        onClick={() => {
+                          if (selectedImage) {
+                            setSelectedPattern(selectedPattern === pattern.id ? 'plain' : pattern.id);
+                          }
+                        }}
+                        disabled={processing || !selectedImage}
+                        className={`p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                          !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-60' :
+                          selectedPattern === pattern.id
+                            ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
+                            : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center space-y-4">
+                          <div className={`p-4 rounded-xl ${
+                            selectedPattern === pattern.id ? 'bg-blue-100' : 'bg-gray-100'
+                          }`}>
+                            <IconComponent className={`w-8 h-8 ${
                               selectedPattern === pattern.id ? 'text-blue-600' : 'text-gray-600'
                             }`} />
-                            <h5 className="font-semibold text-gray-900 text-sm">{pattern.name}</h5>
-                            {pattern.popular && (
-                              <div className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">
-                                Popular
+                          </div>
+                          <div className="flex-1">
+                            <h5 className="font-bold text-gray-900 mb-2">{pattern.name}</h5>
+                            <p className="text-sm text-gray-600 mb-3">{pattern.description}</p>
+                            <p className="text-xs text-blue-600 font-medium">{pattern.preview}</p>
+                            {selectedPattern === pattern.id ? (
+                              <div className="mt-3 inline-flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
+                                <Check className="w-3 h-3 mr-1" />
+                                Will Generate This + Plain
+                              </div>
+                            ) : (
+                              <div className="mt-3 text-xs text-gray-500">
+                                Click to add this pattern
                               </div>
                             )}
                           </div>
-                          <p className="text-xs text-gray-600">{pattern.preview}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
-                                 {/* Selected Pattern Display */}
-                 <div className="mt-6 card p-6 bg-gradient-to-r from-purple-50 to-blue-50">
-                   <h4 className="font-semibold text-gray-900 mb-3">Selected Pattern:</h4>
-                   <div className="flex items-center space-x-4">
-                     {(() => {
-                       const selectedPatternData = paintPatterns.find(p => p.id === selectedPattern);
-                       const IconComponent = selectedPatternData?.icon || Square;
-                       return (
-                         <>
-                           <div className="p-4 bg-white rounded-xl shadow-sm">
-                             <IconComponent className="w-8 h-8 text-blue-600" />
-                           </div>
-                           <div className="flex-1">
-                             <h5 className="text-xl font-bold text-gray-900">{selectedPatternData?.name}</h5>
-                             <p className="text-gray-600">{selectedPatternData?.description}</p>
-                             <p className="text-sm text-blue-600 font-medium mt-1">{selectedPatternData?.preview}</p>
-                             {selectedPattern !== 'plain' && (
-                               <div className="mt-2 inline-flex items-center bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs">
-                                 <Sparkles className="w-3 h-3 mr-1" />
-                                 Creative Pattern
-                               </div>
-                             )}
-                           </div>
-                         </>
-                       );
-                     })()}
-                   </div>
-                 </div>
+                {/* Pattern Summary Display */}
+                <div className="mt-6 card p-6 bg-gradient-to-r from-purple-50 to-blue-50">
+                  <h4 className="font-semibold text-gray-900 mb-3">What You'll Get:</h4>
+                  <div className="space-y-3">
+                    {/* Always show plain */}
+                    <div className="flex items-center space-x-3 bg-white rounded-lg p-3">
+                      <Square className="w-6 h-6 text-blue-600" />
+                      <div>
+                        <h5 className="font-semibold text-gray-900">Plain/Solid Color</h5>
+                        <p className="text-sm text-gray-600">Always included for accurate color preview</p>
+                      </div>
+                      <div className="text-green-600 font-semibold text-sm">✓ Included</div>
+                    </div>
+                    
+                    {/* Show selected pattern if any */}
+                    {selectedPattern !== 'plain' && (() => {
+                      const selectedPatternData = paintPatterns.find(p => p.id === selectedPattern);
+                      const IconComponent = selectedPatternData?.icon || Square;
+                      return (
+                        <div className="flex items-center space-x-3 bg-white rounded-lg p-3 border-2 border-green-200">
+                          <IconComponent className="w-6 h-6 text-purple-600" />
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{selectedPatternData?.name}</h5>
+                            <p className="text-sm text-gray-600">{selectedPatternData?.description}</p>
+                          </div>
+                          <div className="text-green-600 font-semibold text-sm">✓ Added</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  
+                  {selectedPattern === 'plain' && (
+                    <div className="mt-4 text-center text-sm text-gray-600">
+                      Select patterns above to see additional creative options alongside plain color
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
 
-            {/* Step 3: Color Selection */}
-            <div className="card p-8">
+            {/* Step 4: Color Selection */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
               <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                 <Palette className="w-6 h-6 mr-3" />
-                Step 3: Choose Your Paint Color
+                Step 4: Choose Your Paint Color
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
               </h3>
 
               {/* Color Filters */}
@@ -1455,9 +1435,14 @@ const PaintYourWall = () => {
                   <button
                     key={color._id}
                     type="button"
-                    onClick={() => handleColorSelect(color)}
-                    disabled={processing}
+                    onClick={() => {
+                      if (selectedImage) {
+                        handleColorSelect(color);
+                      }
+                    }}
+                    disabled={processing || !selectedImage}
                     className={`group p-3 rounded-lg border-2 transition-all duration-200 ${
+                      !selectedImage ? 'cursor-not-allowed opacity-60' :
                       selectedColor?._id === color._id
                         ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
                         : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
@@ -1516,10 +1501,11 @@ const PaintYourWall = () => {
               )}
             </div>
 
-            {/* Step 4: Project Details */}
-            <div className="card p-8">
+            {/* Step 5: Project Details */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
               <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-                Step 4: Project Details
+                Step 5: Project Details
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
               </h3>
               
               <div className="space-y-4">
@@ -1532,11 +1518,89 @@ const PaintYourWall = () => {
                     type="text"
                     placeholder="e.g., Living Room Makeover, Bedroom Refresh"
                     className="input-field py-3 text-lg"
-                    disabled={processing}
+                    disabled={processing || !selectedImage}
                   />
                   <p className="text-sm text-gray-500 mt-1">
                     Give your project a memorable name to find it easily later
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Compact Step Progress - Right before submit */}
+            <div className="card p-4 bg-blue-50 border border-blue-200">
+              <div className="flex flex-col space-y-3">
+                <h4 className="text-sm font-semibold text-gray-700 text-center mb-2">Progress Steps</h4>
+                
+                {/* Vertical Steps Line */}
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center space-y-2">
+                    {getCompletionStatus().steps.map((step, index) => (
+                      <div key={step.id} className="flex items-center w-full max-w-xs">
+                        {/* Step Number/Check */}
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${
+                          step.completed 
+                            ? 'bg-green-500 text-white' 
+                            : step.enabled
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-300 text-gray-500'
+                        }`}>
+                          {step.completed ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            step.id
+                          )}
+                        </div>
+                        
+                        {/* Step Info */}
+                        <div className="flex-1">
+                          <p className={`text-xs font-medium ${
+                            step.completed ? 'text-green-700' : 
+                            step.enabled ? 'text-blue-700' : 'text-gray-500'
+                          }`}>
+                            {step.name}
+                          </p>
+                        </div>
+                        
+                        {/* Status */}
+                        <div className="flex-shrink-0 ml-2">
+                          {step.completed ? (
+                            <span className="text-xs text-green-600 font-medium">✓</span>
+                          ) : step.enabled ? (
+                            <span className="text-xs text-blue-600 font-medium">○</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">⚬</span>
+                          )}
+                        </div>
+                        
+                        {/* Connecting Line */}
+                        {index < getCompletionStatus().steps.length - 1 && (
+                          <div className="absolute left-[11px] mt-6 w-0.5 h-4 bg-gray-300"></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Status Summary */}
+                <div className="text-center mt-3 pt-3 border-t border-blue-200">
+                  {getCompletionStatus().allCompleted ? (
+                    <div className="text-xs text-green-700 font-medium">
+                      ✅ All steps completed! Ready to generate visualization.
+                    </div>
+                  ) : (
+                    <div className="text-xs text-blue-700">
+                      📍 Next: {getCompletionStatus().nextStep?.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pattern Info */}
+                <div className="text-center mt-2 pt-2 border-t border-blue-200">
+                  <div className="text-xs text-gray-600">
+                    <Square className="w-3 h-3 inline mr-1" />
+                    Plain/Solid always generated + optional creative patterns
+                  </div>
                 </div>
               </div>
             </div>
@@ -1561,7 +1625,7 @@ const PaintYourWall = () => {
                 )}
               </button>
               
-              {(!selectedImage || !selectedColor || (maskingMethod === 'manual' && !manualMask)) && (
+                            {(!selectedImage || !selectedColor || (maskingMethod === 'manual' && !manualMask)) && (
                 <p className="text-sm text-gray-500 mt-3">
                   {!selectedImage 
                     ? 'Please upload an image to continue'
