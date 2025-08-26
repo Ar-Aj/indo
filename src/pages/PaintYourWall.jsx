@@ -1021,7 +1021,6 @@ const PaintYourWall = () => {
                   )}
                 </div>
               </div>
-            )}
 
             {/* Manual Masking Tool - Optimized Responsive Modal */}
             {showMaskingTool && (
@@ -1346,7 +1345,6 @@ const PaintYourWall = () => {
                   )}
                 </div>
               </div>
-            )}
 
             {/* Step 4: Color Selection */}
             <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
