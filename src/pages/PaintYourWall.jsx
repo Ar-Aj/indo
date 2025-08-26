@@ -72,37 +72,41 @@ const PaintYourWall = () => {
         id: 1,
         name: 'Upload Image',
         completed: !!selectedImage,
+        enabled: true,
         description: 'Upload your room photo'
       },
       {
         id: 2,
         name: 'Select Areas',
-        completed: maskingMethod === 'ai' || (maskingMethod === 'manual' && !!manualMask),
+        completed: !!selectedImage && (maskingMethod === 'ai' || (maskingMethod === 'manual' && !!manualMask)),
+        enabled: !!selectedImage,
         description: maskingMethod === 'manual' ? 'Draw areas to paint' : 'AI will detect walls'
       },
       {
         id: 3,
-        name: 'Choose Pattern',
-        completed: !!selectedPattern,
-        description: 'Select paint pattern style'
+        name: 'Choose Pattern (Optional)',
+        completed: true, // Always completed since plain is default and patterns are optional
+        enabled: !!selectedImage,
+        description: 'Plain always included + optional patterns'
       },
       {
         id: 4,
         name: 'Pick Color',
         completed: !!selectedColor,
+        enabled: !!selectedImage,
         description: 'Choose your paint color'
       }
     ];
 
     const completedSteps = steps.filter(step => step.completed).length;
-    const nextStep = steps.find(step => !step.completed);
+    const nextStep = steps.find(step => step.enabled && !step.completed);
     
     return {
       steps,
       completedSteps,
       totalSteps: steps.length,
       nextStep,
-      allCompleted: completedSteps === steps.length
+      allCompleted: !!selectedImage && !!selectedColor && (maskingMethod === 'ai' || (maskingMethod === 'manual' && !!manualMask))
     };
   };
   
@@ -892,13 +896,13 @@ const PaintYourWall = () => {
               </div>
             </div>
 
-            {/* Step 1.5: Masking Method Selection (only show if image is uploaded) */}
-            {imagePreview && (
-              <div className="card p-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <MousePointer className="w-6 h-6 mr-3" />
-                  Step 1.5: Select Areas to Paint
-                </h3>
+            {/* Step 2: Masking Method Selection */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <MousePointer className="w-6 h-6 mr-3" />
+                Step 2: Select Areas to Paint
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
+              </h3>
                 
                 <div className="space-y-6">
                   {/* Method Selection */}
@@ -906,10 +910,14 @@ const PaintYourWall = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setMaskingMethod('manual');
-                        setManualMask(null);
+                        if (selectedImage) {
+                          setMaskingMethod('manual');
+                          setManualMask(null);
+                        }
                       }}
+                      disabled={!selectedImage}
                       className={`p-6 rounded-xl border-2 transition-all duration-200 ${
+                        !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50' :
                         maskingMethod === 'manual'
                           ? 'border-blue-500 bg-blue-50 shadow-lg'
                           : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
@@ -930,11 +938,15 @@ const PaintYourWall = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setMaskingMethod('ai');
-                        setManualMask(null);
-                        setShowMaskingTool(false);
+                        if (selectedImage) {
+                          setMaskingMethod('ai');
+                          setManualMask(null);
+                          setShowMaskingTool(false);
+                        }
                       }}
+                      disabled={!selectedImage}
                       className={`p-6 rounded-xl border-2 transition-all duration-200 ${
+                        !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50' :
                         maskingMethod === 'ai'
                           ? 'border-blue-500 bg-blue-50 shadow-lg'
                           : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
@@ -1221,29 +1233,47 @@ const PaintYourWall = () => {
               </div>
             )}
 
-            {/* Step 2: Pattern Selection (only show if image is uploaded) */}
-            {imagePreview && (
-              <div className="card p-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <Grid className="w-6 h-6 mr-3" />
-                  Step 2: Choose Paint Pattern
-                </h3>
-                
-                <p className="text-gray-600 mb-6">
-                  Select how you want the paint to be applied. Each pattern creates a different visual effect for your space.
-                </p>
+            {/* Step 3: Pattern Selection (Optional) */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <Grid className="w-6 h-6 mr-3" />
+                Step 3: Choose Additional Patterns (Optional)
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
+              </h3>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-1">Plain/Solid Always Included</h4>
+                    <p className="text-sm text-blue-800">
+                      We'll always generate a plain/solid color version for accurate color representation. 
+                      Optionally select additional patterns below to see creative alternatives.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Choose additional patterns to see creative alternatives alongside your plain color version.
+              </p>
 
                 {/* Pattern Options Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  {paintPatterns.map((pattern) => {
+                  {paintPatterns.filter(p => p.id !== 'plain').map((pattern) => {
                     const IconComponent = pattern.icon;
                     return (
                       <button
                         key={pattern.id}
                         type="button"
-                        onClick={() => setSelectedPattern(pattern.id)}
-                        disabled={processing}
+                        onClick={() => {
+                          if (selectedImage) {
+                            setSelectedPattern(selectedPattern === pattern.id ? 'plain' : pattern.id);
+                          }
+                        }}
+                        disabled={processing || !selectedImage}
                         className={`p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                          !selectedImage ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-60' :
                           selectedPattern === pattern.id
                             ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
                             : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
@@ -1261,10 +1291,14 @@ const PaintYourWall = () => {
                             <h5 className="font-bold text-gray-900 mb-2">{pattern.name}</h5>
                             <p className="text-sm text-gray-600 mb-3">{pattern.description}</p>
                             <p className="text-xs text-blue-600 font-medium">{pattern.preview}</p>
-                            {selectedPattern === pattern.id && (
+                            {selectedPattern === pattern.id ? (
                               <div className="mt-3 inline-flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
                                 <Check className="w-3 h-3 mr-1" />
-                                Selected
+                                Will Generate This + Plain
+                              </div>
+                            ) : (
+                              <div className="mt-3 text-xs text-gray-500">
+                                Click to add this pattern
                               </div>
                             )}
                           </div>
@@ -1274,42 +1308,52 @@ const PaintYourWall = () => {
                   })}
                 </div>
 
-                {/* Selected Pattern Display */}
+                {/* Pattern Summary Display */}
                 <div className="mt-6 card p-6 bg-gradient-to-r from-purple-50 to-blue-50">
-                  <h4 className="font-semibold text-gray-900 mb-3">Selected Pattern:</h4>
-                  <div className="flex items-center space-x-4">
-                    {(() => {
+                  <h4 className="font-semibold text-gray-900 mb-3">What You'll Get:</h4>
+                  <div className="space-y-3">
+                    {/* Always show plain */}
+                    <div className="flex items-center space-x-3 bg-white rounded-lg p-3">
+                      <Square className="w-6 h-6 text-blue-600" />
+                      <div>
+                        <h5 className="font-semibold text-gray-900">Plain/Solid Color</h5>
+                        <p className="text-sm text-gray-600">Always included for accurate color preview</p>
+                      </div>
+                      <div className="text-green-600 font-semibold text-sm">✓ Included</div>
+                    </div>
+                    
+                    {/* Show selected pattern if any */}
+                    {selectedPattern !== 'plain' && (() => {
                       const selectedPatternData = paintPatterns.find(p => p.id === selectedPattern);
                       const IconComponent = selectedPatternData?.icon || Square;
                       return (
-                        <>
-                          <div className="p-4 bg-white rounded-xl shadow-sm">
-                            <IconComponent className="w-8 h-8 text-blue-600" />
+                        <div className="flex items-center space-x-3 bg-white rounded-lg p-3 border-2 border-green-200">
+                          <IconComponent className="w-6 h-6 text-purple-600" />
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{selectedPatternData?.name}</h5>
+                            <p className="text-sm text-gray-600">{selectedPatternData?.description}</p>
                           </div>
-                          <div className="flex-1">
-                            <h5 className="text-xl font-bold text-gray-900">{selectedPatternData?.name}</h5>
-                            <p className="text-gray-600">{selectedPatternData?.description}</p>
-                            <p className="text-sm text-blue-600 font-medium mt-1">{selectedPatternData?.preview}</p>
-                            {selectedPattern !== 'plain' && (
-                              <div className="mt-2 inline-flex items-center bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs">
-                                <Sparkles className="w-3 h-3 mr-1" />
-                                Creative Pattern
-                              </div>
-                            )}
-                          </div>
-                        </>
+                          <div className="text-green-600 font-semibold text-sm">✓ Added</div>
+                        </div>
                       );
                     })()}
                   </div>
+                  
+                  {selectedPattern === 'plain' && (
+                    <div className="mt-4 text-center text-sm text-gray-600">
+                      Select patterns above to see additional creative options alongside plain color
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Step 3: Color Selection */}
-            <div className="card p-8">
+            {/* Step 4: Color Selection */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
               <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
                 <Palette className="w-6 h-6 mr-3" />
-                Step 3: Choose Your Paint Color
+                Step 4: Choose Your Paint Color
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
               </h3>
 
               {/* Color Filters */}
@@ -1393,9 +1437,14 @@ const PaintYourWall = () => {
                   <button
                     key={color._id}
                     type="button"
-                    onClick={() => handleColorSelect(color)}
-                    disabled={processing}
+                    onClick={() => {
+                      if (selectedImage) {
+                        handleColorSelect(color);
+                      }
+                    }}
+                    disabled={processing || !selectedImage}
                     className={`group p-3 rounded-lg border-2 transition-all duration-200 ${
+                      !selectedImage ? 'cursor-not-allowed opacity-60' :
                       selectedColor?._id === color._id
                         ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
                         : 'border-gray-200 hover:border-blue-300 hover:shadow-md hover:scale-102'
@@ -1454,10 +1503,11 @@ const PaintYourWall = () => {
               )}
             </div>
 
-            {/* Step 4: Project Details */}
-            <div className="card p-8">
+            {/* Step 5: Project Details */}
+            <div className={`card p-8 ${!selectedImage ? 'opacity-50' : ''}`}>
               <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-                Step 4: Project Details
+                Step 5: Project Details
+                {!selectedImage && <span className="ml-2 text-sm text-gray-500">(Upload image first)</span>}
               </h3>
               
               <div className="space-y-4">
@@ -1470,7 +1520,7 @@ const PaintYourWall = () => {
                     type="text"
                     placeholder="e.g., Living Room Makeover, Bedroom Refresh"
                     className="input-field py-3 text-lg"
-                    disabled={processing}
+                    disabled={processing || !selectedImage}
                   />
                   <p className="text-sm text-gray-500 mt-1">
                     Give your project a memorable name to find it easily later
@@ -1493,7 +1543,9 @@ const PaintYourWall = () => {
                         <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${
                           step.completed 
                             ? 'bg-green-500 text-white' 
-                            : 'bg-gray-300 text-gray-600'
+                            : step.enabled
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-300 text-gray-500'
                         }`}>
                           {step.completed ? (
                             <Check className="w-3 h-3" />
@@ -1505,7 +1557,8 @@ const PaintYourWall = () => {
                         {/* Step Info */}
                         <div className="flex-1">
                           <p className={`text-xs font-medium ${
-                            step.completed ? 'text-green-700' : 'text-gray-600'
+                            step.completed ? 'text-green-700' : 
+                            step.enabled ? 'text-blue-700' : 'text-gray-500'
                           }`}>
                             {step.name}
                           </p>
@@ -1515,8 +1568,10 @@ const PaintYourWall = () => {
                         <div className="flex-shrink-0 ml-2">
                           {step.completed ? (
                             <span className="text-xs text-green-600 font-medium">✓</span>
+                          ) : step.enabled ? (
+                            <span className="text-xs text-blue-600 font-medium">○</span>
                           ) : (
-                            <span className="text-xs text-gray-400">○</span>
+                            <span className="text-xs text-gray-400">⚬</span>
                           )}
                         </div>
                         
@@ -1542,11 +1597,11 @@ const PaintYourWall = () => {
                   )}
                 </div>
 
-                {/* Plain Pattern Default Info */}
+                {/* Pattern Info */}
                 <div className="text-center mt-2 pt-2 border-t border-blue-200">
                   <div className="text-xs text-gray-600">
                     <Square className="w-3 h-3 inline mr-1" />
-                    Plain/Solid pattern is selected by default for best color accuracy
+                    Plain/Solid always generated + optional creative patterns
                   </div>
                 </div>
               </div>
